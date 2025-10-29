@@ -27,24 +27,33 @@ def get_aircraft_by_tail_number(tail_number: str) -> Optional[Dict[str, Any]]:
     Includes joined data from aircraft_model and engine tables.
     
     Args:
-        tail_number: Aircraft tail number (N-Number), e.g., "N12345"
+        tail_number: Aircraft tail number (N-Number), e.g., "N12345", "12345", "n12345"
+                    Case-insensitive, N prefix optional
     
     Returns:
         Dictionary with aircraft data, or None if not found
     """
-    # Normalize tail number (remove N prefix if present, ensure uppercase)
-    tail_number = tail_number.upper().strip()
-    if not tail_number.startswith('N'):
-        tail_number = f"N{tail_number}"
+    # Normalize tail number: case-insensitive, optional N prefix
+    tail_number = tail_number.strip().upper()
     
-    # Limit to 5 characters after N
-    if len(tail_number) > 6:
-        tail_number = tail_number[:6]
+    # Remove leading 'N' if present
+    if tail_number.startswith('N'):
+        tail_number = tail_number[1:]
+    
+    # Remove any whitespace that might remain
+    tail_number = tail_number.strip()
+    
+    # Limit to 5 characters (N-number format: N + up to 5 alphanumeric chars)
+    tail_number = tail_number[:5]
+    
+    # Re-add N prefix for consistent format
+    normalized = f"N{tail_number}"
     
     conn = get_db_connection()
     cursor = conn.cursor()
     
     # Query with LEFT JOINs to get related data
+    # Use UPPER() for case-insensitive comparison (though we normalize, this is extra safety)
     cursor.execute("""
         SELECT 
             a.*,
@@ -59,8 +68,8 @@ def get_aircraft_by_tail_number(tail_number: str) -> Optional[Dict[str, Any]]:
         FROM aircraft a
         LEFT JOIN aircraft_model am ON a.mfr_model_code = am.model_code
         LEFT JOIN engine e ON a.engine_mfr_model_code = e.engine_code
-        WHERE a.n_number = ?
-    """, (tail_number,))
+        WHERE UPPER(TRIM(a.n_number)) = ?
+    """, (normalized,))
     
     row = cursor.fetchone()
     conn.close()
