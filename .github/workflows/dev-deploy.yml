@@ -85,5 +85,7 @@ jobs:
       - name: Verify deployment
         run: |
           sleep 5
-          curl -f http://${{ env.ANSIBLE_HOST }}:${{ env.APP_PORT }}/api/health || exit 1
+          ssh -o StrictHostKeyChecking=no ${{ env.ANSIBLE_USER }}@${{ env.ANSIBLE_HOST }} \
+            "systemctl is-active faa-api-dev.service && \
+             curl -f http://localhost:${{ env.APP_PORT }}/api/health" || exit 1
 
