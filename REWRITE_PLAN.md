@@ -41,8 +41,9 @@ Based on typical FAA registration data:
 #### API Server (`api/`)
 - **main.py**: FastAPI application
   - JSON endpoints: `/api/v1/aircraft/{tail_number}`
-  - Plain text endpoints: `/api/v1/text/aircraft/{tail_number}`
+  - cURL-friendly text endpoints: `/api/v1/curl/aircraft/{tail_number}`
   - Health check: `/api/health`
+  - Swagger/OpenAPI docs at `/docs` (customized to match AirPuff color scheme)
 - **models.py**: Pydantic models for API responses
 - **database.py**: Database connection and queries
 
@@ -110,9 +111,10 @@ tailnumberlookup/
 ### Phase 2: API Development
 1. Set up FastAPI application structure
 2. Implement JSON API endpoint (`/api/v1/aircraft/{tail_number}`)
-3. Implement plain text API endpoint (`/api/v1/text/aircraft/{tail_number}`)
+3. Implement cURL-friendly text API endpoint (`/api/v1/curl/aircraft/{tail_number}`)
 4. Add health check endpoint
-5. Add error handling and validation
+5. Customize Swagger UI to match AirPuff color scheme
+6. Add error handling and validation
 
 ### Phase 3: Frontend
 1. Create modern HTML structure
@@ -144,8 +146,10 @@ tailnumberlookup/
 
 ### API Formats
 - **JSON**: Primary format for web frontend and API consumers
-- **Plain Text**: Human-readable format for cURL/CLI usage
-  - Example: `curl https://api.example.com/api/v1/text/aircraft/N12345`
+- **cURL Text Format**: Human-readable format for cURL/CLI usage
+  - Endpoint: `/api/v1/curl/aircraft/{tail_number}`
+  - Example: `curl https://api.example.com/api/v1/curl/aircraft/N12345`
+- **Swagger Documentation**: Interactive API docs at `/docs` with AirPuff-themed styling
 
 ### Update Frequency
 - **3-4 times daily**: Balance between freshness and server load
