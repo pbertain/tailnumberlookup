@@ -14,21 +14,35 @@ async def search_aircraft_pattern(pattern: str):
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Search with LIKE pattern
+    # Search with LIKE pattern (case-insensitive)
     cursor.execute("""
         SELECT n_number, registrant_name, city, state 
         FROM aircraft 
-        WHERE n_number LIKE ? 
+        WHERE UPPER(n_number) LIKE ? 
         LIMIT 20
     """, (f"%{pattern.upper()}%",))
     
     results = [dict(row) for row in cursor.fetchall()]
+    
+    # Also check with N prefix removed
+    pattern_no_n = pattern.upper().lstrip('N')
+    cursor.execute("""
+        SELECT n_number, registrant_name, city, state 
+        FROM aircraft 
+        WHERE UPPER(SUBSTR(n_number, 2)) LIKE ? 
+        LIMIT 20
+    """, (f"%{pattern_no_n}%",))
+    
+    results_no_n = [dict(row) for row in cursor.fetchall()]
+    
     conn.close()
     
     return {
         "pattern": pattern,
-        "count": len(results),
-        "results": results
+        "count_with_n": len(results),
+        "count_without_n": len(results_no_n),
+        "results": results,
+        "results_without_n_prefix": results_no_n
     }
 
 

@@ -8,7 +8,7 @@ from fastapi.openapi.utils import get_openapi
 from datetime import datetime
 from pathlib import Path
 
-from .database import get_aircraft_by_tail_number, check_database_health
+from .database import get_aircraft_by_tail_number, check_database_health, get_db_connection
 from .models import AircraftResponse, HealthResponse
 from .debug import router as debug_router
 
@@ -233,6 +233,75 @@ async def health_check():
         database="connected" if db_healthy else "disconnected",
         timestamp=datetime.utcnow().isoformat()
     )
+
+
+@app.get("/api/v1/stats")
+async def get_stats():
+    """
+    Get database statistics for frontend display.
+    Returns counts, sample data, and database file information.
+    """
+    from backend.api.database import get_db_path
+    from pathlib import Path
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Get counts
+        cursor.execute("SELECT COUNT(*) FROM aircraft")
+        aircraft_count = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM aircraft_model")
+        model_count = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM engine")
+        engine_count = cursor.fetchone()[0]
+        
+        # Sample tail numbers
+        cursor.execute("SELECT n_number FROM aircraft ORDER BY n_number LIMIT 10")
+        sample_numbers = [row[0] for row in cursor.fetchall()]
+        
+        # Database file info
+        db_path = get_db_path()
+        db_size = 0
+        page_count = 0
+        page_size = 0
+        if db_path.exists():
+            stat = db_path.stat()
+            db_size = stat.st_size / (1024 * 1024)  # Size in MB
+            
+            # Get SQLite page info
+            cursor.execute("PRAGMA page_count")
+            page_count = cursor.fetchone()[0]
+            cursor.execute("PRAGMA page_size")
+            page_size = cursor.fetchone()[0]
+        
+        # Get last sync time from file_metadata
+        cursor.execute("SELECT MAX(file_create_date) FROM file_metadata")
+        last_sync_result = cursor.fetchone()
+        last_sync = last_sync_result[0] if last_sync_result[0] else None
+        
+        # Get SQLite version
+        cursor.execute("SELECT sqlite_version()")
+        sqlite_version = cursor.fetchone()[0]
+        
+        return {
+            "database_type": "SQLite",
+            "sqlite_version": sqlite_version,
+            "total_records": aircraft_count,
+            "model_records": model_count,
+            "engine_records": engine_count,
+            "database_size_mb": round(db_size, 2),
+            "page_count": page_count,
+            "page_size_bytes": page_size,
+            "database_file": str(db_path),
+            "sample_tail_numbers": sample_numbers,
+            "last_sync": last_sync,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    finally:
+        conn.close()
 
 
 @app.get("/api/v1/aircraft/{tail_number}", response_model=AircraftResponse)

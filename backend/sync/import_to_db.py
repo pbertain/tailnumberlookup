@@ -249,10 +249,24 @@ def load_data_if_changed(
     cursor: sqlite3.Cursor,
     file_name: str,
     file_path: Path,
-    load_function: Callable
+    load_function: Callable,
+    force: bool = False
 ) -> bool:
     """Load data if the file has changed."""
-    if has_file_changed(cursor, file_name, file_path):
+    if force:
+        print(f"Force import requested for {file_name}. Loading data...")
+        load_function(cursor, file_path)
+        # Update metadata to reflect current file state
+        if file_path.exists():
+            file_mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
+            file_md5sum = calculate_md5(file_path)
+            cursor.execute(
+                "INSERT OR REPLACE INTO file_metadata (file_name, file_create_date, file_md5sum) VALUES (?, ?, ?)",
+                (file_name, file_mtime.isoformat(), file_md5sum)
+            )
+            cursor.connection.commit()
+        return True
+    elif has_file_changed(cursor, file_name, file_path):
         print(f"Changes detected for {file_name}. Loading data...")
         load_function(cursor, file_path)
         return True
@@ -261,8 +275,13 @@ def load_data_if_changed(
         return False
 
 
-def import_faa_data() -> None:
-    """Main function to import FAA data into the database."""
+def import_faa_data(force: bool = False) -> None:
+    """
+    Main function to import FAA data into the database.
+    
+    Args:
+        force: If True, force re-import even if files haven't changed
+    """
     print("Initializing database...")
     conn = init_database()
     cursor = conn.cursor()
@@ -276,6 +295,14 @@ def import_faa_data() -> None:
         print("Please run download_faa_data.py first.")
         return
     
+    # Check if database is empty - if so, force import
+    cursor.execute("SELECT COUNT(*) FROM aircraft")
+    aircraft_count = cursor.fetchone()[0]
+    
+    if aircraft_count == 0 and not force:
+        print("Database is empty. Force importing all data...")
+        force = True
+    
     # Define file paths
     master_file = data_dir / 'MASTER.txt'
     acftref_file = data_dir / 'ACFTREF.txt'
@@ -283,13 +310,13 @@ def import_faa_data() -> None:
     
     # Load data for each file
     models_updated = load_data_if_changed(
-        cursor, 'Aircraft Reference File', acftref_file, load_aircraft_model_data
+        cursor, 'Aircraft Reference File', acftref_file, load_aircraft_model_data, force=force
     )
     engines_updated = load_data_if_changed(
-        cursor, 'Engine Reference File', engine_file, load_engine_data
+        cursor, 'Engine Reference File', engine_file, load_engine_data, force=force
     )
     aircraft_updated = load_data_if_changed(
-        cursor, 'Aircraft Registration Master File', master_file, load_aircraft_data
+        cursor, 'Aircraft Registration Master File', master_file, load_aircraft_data, force=force
     )
     
     conn.commit()
