@@ -8,6 +8,7 @@ User={{ app_user }}
 Group={{ app_user }}
 WorkingDirectory={{ app_directory }}
 Environment="PATH={{ app_directory }}/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONPATH={{ app_directory }}"
 ExecStart={{ app_directory }}/venv/bin/python -m backend.sync.sync_faa_data
 StandardOutput=journal
 StandardError=journal
