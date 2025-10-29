@@ -1,5 +1,6 @@
 name: Deploy to Dev Environment
 
+# Trigger on push to dev branch
 on:
   push:
     branches:
