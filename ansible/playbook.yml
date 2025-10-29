@@ -80,8 +80,7 @@
     - name: Install Python dependencies
       pip:
         requirements: "{{ app_directory }}/requirements.txt"
-        virtualenv: "{{ app_directory }}/venv"
-        virtualenv_python: python3
+        executable: "{{ app_directory }}/venv/bin/pip"
       become_user: "{{ app_user }}"
     
     - name: Initialize database if it doesn't exist

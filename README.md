@@ -149,17 +149,44 @@ tailnumberlookup/
 
 ### Automated Deployment
 
-The project uses GitHub Actions for automated testing and deployment:
+The project uses GitHub Actions for automated testing and deployment with two branches:
 
-- **Dev Environment**: Automatically deploys when code is pushed to the `dev` branch
+- **Dev Environment** (`dev` branch): Automatically deploys when code is pushed
   - Port: 49081
   - Directory: `/opt/tailnumberlookup-dev`
   - Service: `faa-api-dev`
   
-- **Prod Environment**: Automatically deploys when code is pushed to the `main` branch
+- **Prod Environment** (`main` branch): Automatically deploys when code is pushed
   - Port: 49080
   - Directory: `/opt/tailnumberlookup-prod`
   - Service: `faa-api-prod`
+
+### Development Workflow
+
+1. **Work on dev branch**: Make changes and commit to `dev`
+   ```bash
+   git checkout dev
+   # Make your changes
+   git commit -m "Your changes"
+   git push origin dev
+   ```
+
+2. **Automatic dev deployment**: Pushing to `dev` triggers:
+   - Unit tests run (must pass)
+   - If tests pass → deploys to dev environment
+   - Dev environment available at port 49081
+
+3. **Merge to main for production**:
+   ```bash
+   git checkout main
+   git merge dev
+   git push origin main
+   ```
+
+4. **Automatic prod deployment**: Pushing to `main` triggers:
+   - Unit tests run (must pass)
+   - If tests pass → deploys to prod environment
+   - Prod environment available at port 49080
 
 ### Workflow Process
 

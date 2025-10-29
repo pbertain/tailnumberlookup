@@ -47,6 +47,18 @@ Both workflows follow the same process:
    - Runs Ansible playbook with environment-specific variables
    - Verifies deployment by checking health endpoint
 
+## Branch Structure
+
+The repository uses two main branches:
+- **`dev`**: Development branch - deploys to dev environment
+- **`main`**: Production branch - deploys to prod environment
+
+**Workflow:**
+1. Make changes and commit to `dev` branch
+2. Push `dev` → triggers dev deployment (if tests pass)
+3. Merge `dev` into `main` when ready for production
+4. Push `main` → triggers prod deployment (if tests pass)
+
 ## Manual Deployment
 
 You can manually trigger deployments from the GitHub Actions tab:
