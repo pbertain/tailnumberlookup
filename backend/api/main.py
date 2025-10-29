@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .database import get_aircraft_by_tail_number, check_database_health
 from .models import AircraftResponse, HealthResponse
+from .debug import router as debug_router
 
 
 # Create FastAPI app
@@ -20,6 +21,9 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+# Include debug router
+app.include_router(debug_router)
 
 
 def format_aircraft_text(aircraft_data: dict) -> str:

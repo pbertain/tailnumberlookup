@@ -1,10 +1,13 @@
 name: Deploy to Dev Environment
 
-# Trigger on push to dev branch
+# Trigger on push to dev branch only
 on:
   push:
     branches:
       - dev
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
   workflow_dispatch:  # Allow manual trigger
 
 env:

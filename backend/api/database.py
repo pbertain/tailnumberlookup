@@ -68,7 +68,7 @@ def get_aircraft_by_tail_number(tail_number: str) -> Optional[Dict[str, Any]]:
         FROM aircraft a
         LEFT JOIN aircraft_model am ON a.mfr_model_code = am.model_code
         LEFT JOIN engine e ON a.engine_mfr_model_code = e.engine_code
-        WHERE UPPER(TRIM(a.n_number)) = ?
+        WHERE a.n_number = ?
     """, (normalized,))
     
     row = cursor.fetchone()

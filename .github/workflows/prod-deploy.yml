@@ -1,9 +1,13 @@
 name: Deploy to Prod Environment
 
+# Trigger on push to main branch only
 on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
   workflow_dispatch:  # Allow manual trigger
 
 env:
