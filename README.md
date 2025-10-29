@@ -61,14 +61,14 @@ This application provides both a web interface and API endpoints for querying FA
 
 6. **Start the API server:**
    ```bash
-   uvicorn backend.api.main:app --host 0.0.0.0 --port 8000
+   uvicorn backend.api.main:app --host 0.0.0.0 --port 49080
    ```
 
 7. **Access the application:**
-   - Web interface: http://localhost:8000
-   - API documentation: http://localhost:8000/docs
-   - JSON API: http://localhost:8000/api/v1/aircraft/N12345
-   - Text API: http://localhost:8000/api/v1/curl/aircraft/N12345
+   - Web interface: http://localhost:49080
+   - API documentation: http://localhost:49080/docs
+   - JSON API: http://localhost:49080/api/v1/aircraft/N12345
+   - Text API: http://localhost:49080/api/v1/curl/aircraft/N12345
 
 ## Systemd Setup (Automated Sync)
 
@@ -103,17 +103,17 @@ The timer runs at 00:00, 06:00, 12:00, and 18:00 daily.
 
 ### JSON API
 ```bash
-curl http://localhost:8000/api/v1/aircraft/N12345
+curl http://localhost:49080/api/v1/aircraft/N12345
 ```
 
 ### Text API (cURL-friendly)
 ```bash
-curl http://localhost:8000/api/v1/curl/aircraft/N12345
+curl http://localhost:49080/api/v1/curl/aircraft/N12345
 ```
 
 ### Health Check
 ```bash
-curl http://localhost:8000/api/health
+curl http://localhost:49080/api/health
 ```
 
 ## Project Structure
@@ -145,13 +145,43 @@ tailnumberlookup/
 - `reference_app_current/`: Current working implementation (MySQL-based)
 - `reference_app_rewrite/`: Previous rewrite attempt
 
+## Deployment
+
+### Ansible Deployment
+
+The application can be deployed using Ansible. See `ansible/README.md` for detailed instructions.
+
+**Quick deploy:**
+```bash
+cd ansible
+ansible-playbook --ask-vault-pass \
+  -u ansible \
+  --private-key ~/.ssh/keys/nirdclub__id_ed25519 \
+  -i inventory.yml \
+  playbook.yml
+```
+
+The playbook will:
+- Install Python 3 and dependencies
+- Deploy application to `/opt/tailnumberlookup`
+- Set up systemd services (API on port 49080 and sync timer)
+- Start and enable services
+
+### Deployment Configuration
+
+- **Host**: host74.nird.club
+- **User**: ansible
+- **SSH Key**: `~/.ssh/keys/nirdclub__id_ed25519`
+- **Installation Path**: `/opt/tailnumberlookup`
+- **API Port**: 49080
+
 ## Development
 
 ### Running Tests
 
 The application can be tested by:
-1. Starting the server: `uvicorn backend.api.main:app`
-2. Visiting the web interface at http://localhost:8000
+1. Starting the server: `uvicorn backend.api.main:app --port 49080`
+2. Visiting the web interface at http://localhost:49080
 3. Trying sample tail numbers like "N12345" (if in database)
 
 ### Manual Data Sync

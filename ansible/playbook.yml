@@ -1,0 +1,139 @@
+---
+- name: Deploy Tail Number Lookup Application
+  hosts: all
+  become: yes
+  vars:
+    app_name: tailnumberlookup
+    app_user: ansible
+    app_directory: /opt/tailnumberlookup
+    api_port: 49080
+    python_version: "3"
+    
+  tasks:
+    - name: Check if Python 3 is installed
+      command: which python3
+      register: python3_check
+      changed_when: false
+      failed_when: false
+    
+    - name: Check if pip3 is installed
+      command: which pip3
+      register: pip3_check
+      changed_when: false
+      failed_when: false
+    
+    - name: Install Python 3 and pip
+      package:
+        name:
+          - python3
+          - python3-pip
+          - python3-venv
+        state: present
+      when: python3_check.rc != 0 or pip3_check.rc != 0
+    
+    - name: Create application directory
+      file:
+        path: "{{ app_directory }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0755'
+    
+    - name: Create data directory
+      file:
+        path: "{{ app_directory }}/data"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0755'
+    
+    - name: Copy application files
+      synchronize:
+        src: "{{ playbook_dir }}/../"
+        dest: "{{ app_directory }}/"
+        delete: yes
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=.env"
+          - "--exclude=data"
+          - "--exclude=venv"
+          - "--exclude=__pycache__"
+          - "--exclude=*.pyc"
+          - "--exclude=*.pyo"
+          - "--exclude=.DS_Store"
+          - "--exclude=ansible/.vault_pass"
+          - "--exclude=*.db"
+          - "--exclude=*.db-journal"
+          - "--exclude=FAA_Database"
+          - "--exclude=ReleasableAircraft.zip"
+      become_user: "{{ app_user }}"
+    
+    - name: Create Python virtual environment
+      command: python3 -m venv "{{ app_directory }}/venv"
+      args:
+        creates: "{{ app_directory }}/venv/bin/activate"
+      become_user: "{{ app_user }}"
+    
+    - name: Install Python dependencies
+      pip:
+        requirements: "{{ app_directory }}/requirements.txt"
+        virtualenv: "{{ app_directory }}/venv"
+        virtualenv_python: python3
+      become_user: "{{ app_user }}"
+    
+    - name: Initialize database if it doesn't exist
+      command: "{{ app_directory }}/venv/bin/python -m backend.sync.database"
+      args:
+        creates: "{{ app_directory }}/data/faa_aircraft.db"
+      become_user: "{{ app_user }}"
+      changed_when: false
+    
+    - name: Copy systemd service file for API server
+      template:
+        src: faa-api.service.j2
+        dest: /etc/systemd/system/faa-api.service
+        mode: '0644'
+      notify: reload systemd
+    
+    - name: Copy systemd service file for sync
+      template:
+        src: faa-sync.service.j2
+        dest: /etc/systemd/system/faa-sync.service
+        mode: '0644'
+      notify: reload systemd
+    
+    - name: Copy systemd timer file for sync
+      template:
+        src: faa-sync.timer.j2
+        dest: /etc/systemd/system/faa-sync.timer
+        mode: '0644'
+      notify: reload systemd
+    
+    - name: Enable and start API service
+      systemd:
+        name: faa-api
+        enabled: yes
+        state: started
+        daemon_reload: yes
+    
+    - name: Enable and start sync timer
+      systemd:
+        name: faa-sync.timer
+        enabled: yes
+        state: started
+        daemon_reload: yes
+    
+    - name: Check API service status
+      systemd:
+        name: faa-api
+      register: api_status
+    
+    - name: Display API service status
+      debug:
+        msg: "API service is {{ api_status.status.ActiveState }}"
+  
+  handlers:
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes
+

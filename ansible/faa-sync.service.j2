@@ -1,0 +1,17 @@
+[Unit]
+Description=FAA Aircraft Data Sync Service
+After=network.target
+
+[Service]
+Type=oneshot
+User={{ app_user }}
+Group={{ app_user }}
+WorkingDirectory={{ app_directory }}
+Environment="PATH={{ app_directory }}/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart={{ app_directory }}/venv/bin/python -m backend.sync.sync_faa_data
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+
