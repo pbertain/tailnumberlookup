@@ -73,14 +73,15 @@ def get_aircraft_by_tail_number(tail_number: str) -> Optional[Dict[str, Any]]:
 
 
 def check_database_health() -> bool:
-    """Check if database is accessible and has data."""
+    """Check if database is accessible."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM aircraft")
-        count = cursor.fetchone()[0]
+        # Just check if we can query the database, don't require data
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' LIMIT 1")
+        result = cursor.fetchone()
         conn.close()
-        return count > 0
+        return result is not None
     except Exception:
         return False
 
