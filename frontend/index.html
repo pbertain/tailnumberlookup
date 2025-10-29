@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tail Number Lookup - AirPuff</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="https://airpuff.info/web/icons/airpuff-logo.png">
+</head>
+<body>
+    <header class="header-main">
+        <div class="header-content">
+            <img src="https://airpuff.info/web/icons/airpuff-logo.png" alt="AirPuff Logo" class="logo">
+            <h1 class="header-title">AirPuff Tail Number Lookup</h1>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="welcome-section">
+            <h2>Welcome to the AirPuff Aircraft Tail Number Lookup</h2>
+            <p>Search for aircraft information by entering an N-Number (tail number).</p>
+        </div>
+
+        <div class="search-section">
+            <form id="searchForm" class="search-form">
+                <label for="tailNumber" class="search-label">Enter N-Number:</label>
+                <div class="search-input-group">
+                    <span class="n-prefix">N</span>
+                    <input 
+                        type="text" 
+                        id="tailNumber" 
+                        name="tailNumber" 
+                        class="search-input"
+                        placeholder="12345"
+                        maxlength="5"
+                        pattern="[0-9A-Z]{1,5}"
+                        required
+                        autofocus
+                    >
+                    <button type="submit" class="search-button">Search</button>
+                </div>
+                <small class="search-hint">Enter 1-5 characters (numbers and letters)</small>
+            </form>
+        </div>
+
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Searching for aircraft information...</p>
+        </div>
+
+        <div id="result" class="result-container"></div>
+
+        <div class="links-section">
+            <p>
+                <a href="/docs" class="link-docs">📚 API Documentation (Swagger)</a>
+            </p>
+            <p>
+                <small>Powered by AirPuff</small>
+            </p>
+        </div>
+    </main>
+
+    <footer class="footer-main">
+        <p>Powered by AirPuff</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
+

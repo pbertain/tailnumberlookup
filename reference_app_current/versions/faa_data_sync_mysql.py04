@@ -1,0 +1,201 @@
+import os
+import pymysql
+import pandas as pd
+
+# Database configuration from environment variables
+DB_PASSWORD = os.getenv('FAA_DB_PASSWORD')
+
+# Create MySQL connection
+connection = pymysql.connect(
+    host='localhost',
+    user='faa_user',
+    password=DB_PASSWORD,
+    db='faa_aircraft',
+    charset='utf8mb4',
+    cursorclass=pymysql.cursors.DictCursor
+)
+
+data_dir = "/var/bertain-cdn/faa-aircraft-lookup/data/FAA_Database"
+
+def drop_and_create_tables():
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("DROP TABLE IF EXISTS aircraft;")
+            cursor.execute("DROP TABLE IF EXISTS aircraft_model;")
+            cursor.execute("DROP TABLE IF EXISTS engine;")
+            connection.commit()
+            print("Dropped all tables successfully.")
+
+            cursor.execute("""
+                CREATE TABLE aircraft (
+                    tail_number VARCHAR(15),
+                    serial_number VARCHAR(50),
+                    mfr_mdl_code VARCHAR(20),
+                    eng_mfr_mdl VARCHAR(20),
+                    year_mfr INT,
+                    owner_name VARCHAR(150),
+                    street VARCHAR(150),
+                    street2 VARCHAR(150),
+                    city VARCHAR(100),
+                    state VARCHAR(10),
+                    zip_code VARCHAR(20),
+                    region VARCHAR(10),
+                    county VARCHAR(50),
+                    country VARCHAR(10),
+                    cert_issue_date DATE,
+                    certification VARCHAR(50),
+                    type_aircraft VARCHAR(20),
+                    type_engine VARCHAR(20),
+                    air_worth_date DATE,
+                    expiration_date DATE
+                );
+            """)
+
+            cursor.execute("""
+                CREATE TABLE aircraft_model (
+                    mfr_mdl_code VARCHAR(20) PRIMARY KEY,
+                    aircraft_mfr VARCHAR(100),
+                    aircraft_model VARCHAR(100),
+                    type_aircraft VARCHAR(10),
+                    type_engine VARCHAR(10),
+                    aircraft_category VARCHAR(10),
+                    builder_certification VARCHAR(10),
+                    number_of_engines INT
+                );
+            """)
+
+            cursor.execute("""
+                CREATE TABLE engine (
+                    eng_mfr_mdl VARCHAR(20) PRIMARY KEY,
+                    engine_mfr VARCHAR(100),
+                    engine_model VARCHAR(100),
+                    type_engine VARCHAR(10),
+                    engine_horsepower INT,
+                    engine_thrust INT
+                );
+            """)
+            connection.commit()
+            print("Recreated all tables successfully.")
+    except Exception as e:
+        print(f"Error during table creation: {e}")
+
+def clean_data(df):
+    # Replace NaN with None for MySQL compatibility
+    return df.where(pd.notnull(df), None)
+
+def load_data():
+    try:
+        # Load aircraft model data
+        aircraft_model_df = pd.read_csv(
+            f"{data_dir}/ACFTREF.txt",
+            dtype=str,  # Read everything as string to avoid dtype issues
+            low_memory=False
+        )
+        aircraft_model_df = clean_data(aircraft_model_df)
+        print("Aircraft Model Data (after cleaning):")
+        print(aircraft_model_df.head())
+
+        with connection.cursor() as cursor:
+            for _, row in aircraft_model_df.iterrows():
+                insert_stmt = """
+                    INSERT INTO aircraft_model (mfr_mdl_code, aircraft_mfr, aircraft_model, type_aircraft, type_engine, aircraft_category, builder_certification, number_of_engines)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                    aircraft_mfr = VALUES(aircraft_mfr),
+                    aircraft_model = VALUES(aircraft_model),
+                    type_aircraft = VALUES(type_aircraft),
+                    type_engine = VALUES(type_engine),
+                    aircraft_category = VALUES(aircraft_category),
+                    builder_certification = VALUES(builder_certification),
+                    number_of_engines = VALUES(number_of_engines)
+                """
+                cursor.execute(insert_stmt, (
+                    row['mfr_mdl_code'], row['aircraft_mfr'], row['aircraft_model'],
+                    row['type_aircraft'], row['type_engine'], row['aircraft_category'],
+                    row['builder_certification'], row['number_of_engines']
+                ))
+            connection.commit()
+            print("Aircraft model data loaded successfully.")
+
+        # Load aircraft data
+        aircraft_df = pd.read_csv(
+            f"{data_dir}/MASTER.txt",
+            dtype=str,  # Read everything as string to avoid dtype issues
+            low_memory=False
+        )
+        aircraft_df = clean_data(aircraft_df)
+        print("Aircraft Data (after cleaning):")
+        print(aircraft_df.head())
+
+        with connection.cursor() as cursor:
+            for _, row in aircraft_df.iterrows():
+                insert_stmt = """
+                    INSERT INTO aircraft (tail_number, serial_number, mfr_mdl_code, eng_mfr_mdl, year_mfr, owner_name, street, street2, city, state, zip_code, region, county, country, cert_issue_date, certification, type_aircraft, type_engine, air_worth_date, expiration_date)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                    serial_number = VALUES(serial_number),
+                    mfr_mdl_code = VALUES(mfr_mdl_code),
+                    eng_mfr_mdl = VALUES(eng_mfr_mdl),
+                    year_mfr = VALUES(year_mfr),
+                    owner_name = VALUES(owner_name),
+                    street = VALUES(street),
+                    street2 = VALUES(street2),
+                    city = VALUES(city),
+                    state = VALUES(state),
+                    zip_code = VALUES(zip_code),
+                    region = VALUES(region),
+                    county = VALUES(county),
+                    country = VALUES(country),
+                    cert_issue_date = VALUES(cert_issue_date),
+                    certification = VALUES(certification),
+                    type_aircraft = VALUES(type_aircraft),
+                    type_engine = VALUES(type_engine),
+                    air_worth_date = VALUES(air_worth_date),
+                    expiration_date = VALUES(expiration_date)
+                """
+                cursor.execute(insert_stmt, (
+                    row['N-NUMBER'], row['SERIAL NUMBER'], row['MFR MDL CODE'], row['ENG MFR MDL'],
+                    row['YEAR MFR'], row['OWNER NAME'], row['STREET'], row['STREET2'], row['CITY'],
+                    row['STATE'], row['ZIP CODE'], row['REGION'], row['COUNTY'], row['COUNTRY'],
+                    row['LAST ACTION DATE'], row['CERT ISSUE DATE'], row['CERTIFICATION'],
+                    row['TYPE AIRCRAFT'], row['TYPE ENGINE'], row['AIR WORTH DATE'], row['EXPIRATION DATE']
+                ))
+            connection.commit()
+            print("Aircraft data loaded successfully.")
+
+        # Load engine data
+        engine_df = pd.read_csv(
+            f"{data_dir}/ENGINE.txt",
+            dtype=str,  # Read everything as string to avoid dtype issues
+            low_memory=False
+        )
+        engine_df = clean_data(engine_df)
+        print("Engine Data (after cleaning):")
+        print(engine_df.head())
+
+        with connection.cursor() as cursor:
+            for _, row in engine_df.iterrows():
+                insert_stmt = """
+                    INSERT INTO engine (eng_mfr_mdl, engine_mfr, engine_model, type_engine, engine_horsepower, engine_thrust)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                    engine_mfr = VALUES(engine_mfr),
+                    engine_model = VALUES(engine_model),
+                    type_engine = VALUES(type_engine),
+                    engine_horsepower = VALUES(engine_horsepower),
+                    engine_thrust = VALUES(engine_thrust)
+                """
+                cursor.execute(insert_stmt, (
+                    row['eng_mfr_mdl'], row['engine_mfr'], row['engine_model'],
+                    row['type_engine'], row['engine_horsepower'], row['engine_thrust']
+                ))
+            connection.commit()
+            print("Engine data loaded successfully.")
+            
+    except Exception as e:
+        print(f"Error during data loading: {e}")
+
+if __name__ == "__main__":
+    drop_and_create_tables()
+    load_data()
+

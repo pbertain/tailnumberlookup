@@ -1,0 +1,48 @@
+openapi: 3.0.3
+info:
+  title: FAA Aircraft Lookup API
+  description: API to look up aircraft information by tail number
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000
+    description: Local server
+
+paths:
+  /aircraft/{tail_number}:
+    get:
+      summary: Retrieve aircraft details by tail number
+      description: Get aircraft registration and ownership details for a specific tail number.
+      parameters:
+        - name: tail_number
+          in: path
+          required: true
+          schema:
+            type: string
+            example: N12345
+      responses:
+        "200":
+          description: Successfully retrieved aircraft details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tail_number:
+                    type: string
+                    example: N12345
+                  owner_name:
+                    type: string
+                    example: John Doe
+                  city:
+                    type: string
+                    example: New York
+                  state:
+                    type: string
+                    example: NY
+                  expiration_date:
+                    type: string
+                    format: date
+                    example: 2024-10-08
+        "404":
+          description: Aircraft not found
+

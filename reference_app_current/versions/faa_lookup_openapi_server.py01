@@ -1,0 +1,41 @@
+import os
+from fastapi import FastAPI
+from fastapi.openapi.utils import get_openapi
+from fastapi.openapi.docs import get_swagger_ui_html
+import yaml
+
+# Version of the FastAPI app
+APP_VERSION = 2
+
+# Print the app version when the app starts
+print(f"Running faa-data-sync API version {APP_VERSION}")
+
+app = FastAPI()
+
+# Load the OpenAPI spec from the YAML file in the config directory
+yaml_file_path = os.path.join("config", "faa-data-syncer-openapi.yaml")
+with open(yaml_file_path, "r") as file:
+    openapi_spec = yaml.safe_load(file)
+
+# Override FastAPI's OpenAPI schema with your custom OpenAPI spec
+def custom_openapi():
+    return openapi_spec
+
+app.openapi = custom_openapi
+
+# Serve the OpenAPI schema at the `/openapi.json` endpoint
+@app.get("/openapi.json")
+def get_openapi_json():
+    return app.openapi()
+
+# Serve Swagger UI at the `/docs` endpoint
+@app.get("/docs", include_in_schema=False)
+def custom_swagger_ui_html():
+    return get_swagger_ui_html(openapi_url="/openapi.json", title="FAA Data Sync API")
+
+# Example of an endpoint defined in the OpenAPI spec
+@app.get("/aircraft/{n_number}")
+def get_aircraft(n_number: str):
+    # You would implement the logic to retrieve the aircraft details here
+    return {"message": f"Aircraft details for {n_number}"}
+

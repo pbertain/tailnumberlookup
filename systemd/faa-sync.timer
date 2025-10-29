@@ -1,0 +1,13 @@
+[Unit]
+Description=Run FAA Data Sync Multiple Times Daily
+Requires=faa-sync.service
+
+[Timer]
+# Run at 00:00, 06:00, 12:00, and 18:00 daily
+OnCalendar=*-*-* 00,06,12,18:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
+

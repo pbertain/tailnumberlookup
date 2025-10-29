@@ -1,0 +1,166 @@
+from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
+from typing import Optional
+import os
+import pymysql
+
+# Version number for the script
+SCRIPT_VERSION = 18
+
+app = FastAPI(
+    title="FAA Aircraft Lookup API",
+    description="API to lookup aircraft information.",
+    version=SCRIPT_VERSION
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Update with specific domains as needed for security
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Database connection configuration
+DB_CONFIG = {
+    "host": "localhost",
+    "user": "faa_user",  # Replace with your MySQL username
+    "password": os.getenv("FAA_DB_PASSWORD"),  # Ensure FAA_DB_PASSWORD is set
+    "database": "faa_aircraft"
+}
+
+# Initialize templates
+templates = Jinja2Templates(directory="templates")
+
+# Aircraft response model
+class AircraftResponseModel(BaseModel):
+    n_number: str
+    serial_number: Optional[str] = None
+    mfr_model_code: Optional[str] = None
+    model_name: Optional[str] = None  # New field for translated model name
+    engine_mfr_model_code: Optional[str] = None
+    year_mfr: Optional[int] = None
+    type_registrant: Optional[str] = None
+    registrant_name: Optional[str] = None
+    street1: Optional[str] = None
+    street2: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+    registrant_region: Optional[str] = None
+    county_mail_code: Optional[str] = None
+    country_mail_code: Optional[str] = None
+    last_activity_date: Optional[str] = None
+    certificate_issue_date: Optional[str] = None
+    airworthiness_classification_code: Optional[str] = None
+    approved_operation_codes: Optional[str] = None
+    type_aircraft: Optional[str] = None
+    type_engine: Optional[str] = None
+    status_code: Optional[str] = None
+    mode_s_code: Optional[str] = None
+    fractional_ownership: Optional[str] = None
+    airworthiness_date: Optional[str] = None
+    unique_id: Optional[str] = None
+    expiration_date: Optional[str] = None
+    model_code: Optional[str] = None
+    engine_code: Optional[str] = None
+
+    class Config:
+        protected_namespaces = ()  # Disables the protected namespaces warning
+
+# Route to serve the input form HTML page at the root
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+# Database connection helper
+def get_db_connection():
+    return pymysql.connect(
+        host=DB_CONFIG["host"],
+        user=DB_CONFIG["user"],
+        password=DB_CONFIG["password"],
+        database=DB_CONFIG["database"]
+    )
+
+# Route to fetch aircraft data by N-number
+@app.get("/aircraft/{n_number}", response_model=AircraftResponseModel)
+async def get_aircraft_by_n_number(n_number: str):
+    conn = get_db_connection()
+    try:
+        with conn.cursor(pymysql.cursors.DictCursor) as cursor:
+            # Updated SQL query to join aircraft, aircraft_model, and engine tables
+            sql_query = """
+                SELECT 
+                    aircraft.*, 
+                    aircraft_model.manufacturer_name AS aircraft_manufacturer_name, 
+                    aircraft_model.model_name AS aircraft_model_name, 
+                    engine.manufacturer_name AS engine_manufacturer,
+                    engine.engine_model_name AS engine_model,
+                    engine.horsepower AS engine_horsepower
+                FROM aircraft
+                LEFT JOIN aircraft_model ON aircraft.mfr_model_code = aircraft_model.model_code
+                LEFT JOIN engine ON aircraft.engine_mfr_model_code = engine.engine_code
+                WHERE aircraft.n_number = %s
+            """
+            cursor.execute(sql_query, (n_number,))
+            result = cursor.fetchone()
+            if result:
+                # Convert date fields to string if present
+                if "last_activity_date" in result and result["last_activity_date"]:
+                    result["last_activity_date"] = result["last_activity_date"].strftime("%Y-%m-%d")
+                if "certificate_issue_date" in result and result["certificate_issue_date"]:
+                    result["certificate_issue_date"] = result["certificate_issue_date"].strftime("%Y-%m-%d")
+                if "airworthiness_date" in result and result["airworthiness_date"]:
+                    result["airworthiness_date"] = result["airworthiness_date"].strftime("%Y-%m-%d")
+                if "expiration_date" in result and result["expiration_date"]:
+                    result["expiration_date"] = result["expiration_date"].strftime("%Y-%m-%d")
+
+                # Include model name in the response if available
+                result["aircraft_manufacturer_name"] = result.get("aircraft_manufacturer_name", "Unknown Manufacturer")
+                result["aircraft_model_name"] = result.get("aircraft_model_name", "Unknown Model")
+                result["engine_manufacturer"] = result.get("engine_manufacturer", "Unknown Engine Manufacturer")
+                result["engine_model"] = result.get("engine_model", "Unknown Engine Model")
+                result["engine_horsepower"] = result.get("engine_horsepower", "Unknown Horsepower")
+
+                return AircraftResponseModel(**result)
+            else:
+                return JSONResponse(status_code=404, content={"detail": "Aircraft not found"})
+    except Exception as e:
+        # Output the detailed error message
+        return JSONResponse(status_code=500, content={"detail": f"Internal Server Error: {str(e)}"})
+    finally:
+        conn.close()
+
+# Custom root page with the OpenAPI docs link
+@app.get("/info", response_class=HTMLResponse)
+async def custom_root_page():
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Welcome to FAA Aircraft Lookup API</title>
+        <link rel="stylesheet" href="https://www.airpuff.info/web/css/airpuff.css">
+    </head>
+    <body class="body_main">
+        <header class="basic" style="display: flex; align-items: center; padding: 20px;">
+            <img src="https://airpuff.info/web/icons/airpuff-logo.png" alt="AirPuff Logo" style="width: 100px; margin-right: 20px;">
+            <h1 class="header">Welcome to the FAA Aircraft Lookup API</h1>
+        </header>
+        <main style="text-align: center;">
+            <p class="paragraph">Easily look up aircraft information by entering a Tail Number (N-number) on the <a href="/">Lookup Page</a>.</p>
+            <p class="paragraph">For developers, explore our API documentation on the <a href="/docs">OpenAPI Docs</a>.</p>
+        </main>
+        <footer class="footer">
+            <p>Powered by AirPuff.</p>
+        </footer>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
+

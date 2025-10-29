@@ -1,0 +1,113 @@
+openapi: 3.0.3
+info:
+  title: FAA Aircraft Data API
+  description: An API for accessing FAA aircraft registration data.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000
+    description: Local server
+
+paths:
+  /aircrafts:
+    get:
+      summary: Get a list of aircrafts
+      description: Returns a list of aircraft records, with optional filters for tail number, model, and owner.
+      parameters:
+        - in: query
+          name: tail_number
+          schema:
+            type: string
+          description: Filter aircrafts by tail number
+        - in: query
+          name: mfr_mdl_code
+          schema:
+            type: string
+          description: Filter aircrafts by manufacturer model code
+        - in: query
+          name: owner_name
+          schema:
+            type: string
+          description: Filter aircrafts by owner name
+      responses:
+        '200':
+          description: A list of aircrafts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Aircraft'
+        '400':
+          description: Invalid query parameters
+
+  /aircrafts/{tail_number}:
+    get:
+      summary: Get an aircraft by tail number
+      description: Returns a specific aircraft by its tail number.
+      parameters:
+        - in: path
+          name: tail_number
+          required: true
+          schema:
+            type: string
+          description: The tail number of the aircraft
+      responses:
+        '200':
+          description: An aircraft object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Aircraft'
+        '404':
+          description: Aircraft not found
+
+components:
+  schemas:
+    Aircraft:
+      type: object
+      properties:
+        tail_number:
+          type: string
+        serial_number:
+          type: string
+        mfr_mdl_code:
+          type: string
+        eng_mfr_mdl:
+          type: string
+        year_mfr:
+          type: integer
+        owner_name:
+          type: string
+        street:
+          type: string
+        street2:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        zip_code:
+          type: string
+        region:
+          type: string
+        county:
+          type: string
+        country:
+          type: string
+        cert_issue_date:
+          type: string
+          format: date
+        certification:
+          type: string
+        type_aircraft:
+          type: string
+        type_engine:
+          type: string
+        air_worth_date:
+          type: string
+          format: date
+        expiration_date:
+          type: string
+          format: date
+

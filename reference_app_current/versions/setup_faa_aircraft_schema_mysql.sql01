@@ -1,0 +1,50 @@
+-- Load into MySQL with: mysql -u root -p faa_aircraft < setup_faa_aircraft_schema_mysql.sql
+
+DROP TABLE IF EXISTS aircraft_model;
+DROP TABLE IF EXISTS engine;
+DROP TABLE IF EXISTS aircraft;
+
+CREATE TABLE aircraft_model (
+    mfr_mdl_code VARCHAR(10) PRIMARY KEY,
+    aircraft_mfr VARCHAR(100),
+    aircraft_model VARCHAR(100),
+    type_aircraft INT,
+    type_engine INT,
+    aircraft_category INT,
+    builder_certification BOOLEAN,
+    number_of_engines INT,
+    number_of_seats INT,
+    ac_weight VARCHAR(50),
+    speed INT,
+    tc_data_sheet VARCHAR(50),
+    tc_data_holder VARCHAR(50)
+);
+
+CREATE TABLE engine (
+    eng_mfr_mdl VARCHAR(10) PRIMARY KEY,
+    engine_mfr VARCHAR(100),
+    engine_model VARCHAR(100),
+    type_engine VARCHAR(50),
+    engine_horsepower FLOAT,
+    engine_thrust FLOAT
+);
+
+CREATE TABLE aircraft (
+    tail_number VARCHAR(10) PRIMARY KEY,
+    serial_number VARCHAR(50),
+    mfr_mdl_code VARCHAR(10),
+    eng_mfr_mdl VARCHAR(10),
+    year_mfr INT,
+    type_registrant INT,
+    owner_name VARCHAR(100),
+    street VARCHAR(100),
+    city VARCHAR(50),
+    state VARCHAR(50),
+    zip_code VARCHAR(10),
+    expiration_date DATE,
+    unique_id INT,
+    mode_s_code_hex VARCHAR(10),
+    FOREIGN KEY (mfr_mdl_code) REFERENCES aircraft_model(mfr_mdl_code),
+    FOREIGN KEY (eng_mfr_mdl) REFERENCES engine(eng_mfr_mdl)
+);
+

@@ -1,0 +1,40 @@
+-- Aircraft Table
+CREATE TABLE aircraft (
+    tail_number VARCHAR(5) PRIMARY KEY,
+    serial_number VARCHAR(30),
+    mfr_mdl_code VARCHAR(7),
+    eng_mfr_mdl VARCHAR(5),
+    year_mfr INTEGER,
+    owner_name VARCHAR(50),
+    street VARCHAR(33),
+    street2 VARCHAR(33),
+    city VARCHAR(18),
+    state CHAR(2),
+    zip_code VARCHAR(10),
+    region CHAR(1),
+    county VARCHAR(3),
+    country CHAR(2),
+    cert_issue_date DATE,
+    certification CHAR(1),
+    type_aircraft CHAR(1),
+    type_engine CHAR(2),
+    air_worth_date DATE,
+    expiration_date DATE,
+    FOREIGN KEY (mfr_mdl_code) REFERENCES aircraft_model(mfr_mdl_code),
+    FOREIGN KEY (eng_mfr_mdl) REFERENCES engine(eng_mfr_mdl)
+);
+
+-- Aircraft Model Table
+CREATE TABLE aircraft_model (
+    mfr_mdl_code VARCHAR(7) PRIMARY KEY,
+    manufacturer VARCHAR(30),
+    model VARCHAR(20)
+);
+
+-- Engine Table
+CREATE TABLE engine (
+    eng_mfr_mdl VARCHAR(5) PRIMARY KEY,
+    manufacturer VARCHAR(10),
+    model VARCHAR(13)
+);
+

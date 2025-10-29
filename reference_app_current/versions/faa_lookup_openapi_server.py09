@@ -1,0 +1,112 @@
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
+from pydantic import BaseModel, Field
+from typing import Optional
+from datetime import date
+import pymysql
+import os
+
+# Version number for the OpenAPI server
+API_VERSION = 9
+
+# Print the version when the server starts
+print(f"Running faa_lookup_openapi_server.py version {API_VERSION}")
+
+# Load DB password from environment
+FAA_DB_PASSWORD = os.getenv('FAA_DB_PASSWORD')
+
+# FastAPI app instance
+app = FastAPI()
+
+# Pydantic model for the Aircraft response
+class AircraftResponseModel(BaseModel):
+    n_number: str
+    serial_number: Optional[str] = None
+    mfr_model_code: Optional[str] = None
+    engine_mfr_model_code: Optional[str] = None
+    year_mfr: Optional[int] = None
+    type_registrant: Optional[str] = None
+    registrant_name: Optional[str] = None
+    street1: Optional[str] = None
+    street2: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+    registrant_region: Optional[str] = None
+    county_mail_code: Optional[str] = None
+    country_mail_code: Optional[str] = None
+    last_activity_date: Optional[date] = None
+    cert_issue_date: Optional[date] = None
+    cert_requested: Optional[str] = None
+    type_aircraft: Optional[str] = None
+    type_engine: Optional[str] = None
+    status_code: Optional[str] = None
+    mode_s_code: Optional[str] = None
+    fractional_ownership: Optional[str] = None
+    airworthiness_date: Optional[date] = None
+    other_name_1: Optional[str] = None
+    other_name_2: Optional[str] = None
+    other_name_3: Optional[str] = None
+    other_name_4: Optional[str] = None
+    other_name_5: Optional[str] = None
+    expiration_date: Optional[date] = None
+    unique_id: Optional[str] = None
+    kit_mfr: Optional[str] = None
+    kit_model_code: Optional[str] = None
+    mode_s_code_hex: Optional[str] = None
+
+    class Config:
+        json_encoders = {
+            date: lambda v: v.isoformat() if v else None
+        }
+
+# Database connection helper
+def connect_db():
+    return pymysql.connect(
+        host="localhost",
+        user="faa_user",
+        password=FAA_DB_PASSWORD,
+        database="faa_aircraft",
+        cursorclass=pymysql.cursors.DictCursor
+    )
+
+# Redirect root to a welcome page with a link to /docs
+@app.get("/", include_in_schema=False)
+async def root():
+    html_content = """
+    <html>
+        <head>
+            <title>FAA Aircraft Lookup API</title>
+            <link rel="stylesheet" href="https://www.airpuff.info/web/css/airpuff.css">
+        </head>
+        <body class="body_main">
+            <div class="header">
+                <h1>Welcome to the FAA Aircraft Lookup API</h1>
+                <p class="paragraph">Visit the <a href="/docs">API Documentation</a> for detailed usage.</p>
+            </div>
+        </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
+
+# Route to fetch aircraft by N-number
+@app.get("/aircraft/{n_number}", response_model=AircraftResponseModel)
+async def get_aircraft_by_n_number(n_number: str):
+    try:
+        db = connect_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM aircraft WHERE n_number = %s", (n_number.upper(),))
+        result = cursor.fetchone()
+        db.close()
+
+        if not result:
+            raise HTTPException(status_code=404, detail="Aircraft not found")
+        return result
+
+    except pymysql.MySQLError as e:
+        print(f"Database error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+    except Exception as e:
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+

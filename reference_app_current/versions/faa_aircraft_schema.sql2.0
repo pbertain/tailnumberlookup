@@ -1,0 +1,89 @@
+-- FAA Aircraft Database Schema Version 2.0
+-- Load into MySQL with: mysql -u root -p faa_aircraft < config/faa_aircraft_schema_v2.0.sql
+
+CREATE DATABASE IF NOT EXISTS faa_aircraft;
+USE faa_aircraft;
+
+-- Aircraft Table (Master Registration Data)
+CREATE TABLE IF NOT EXISTS aircraft (
+    n_number CHAR(5) PRIMARY KEY,
+    serial_number VARCHAR(30),
+    mfr_model_code CHAR(7),                  -- Updated to match load_aircraft_data naming
+    engine_mfr_model_code CHAR(5),           -- Updated to match load_aircraft_data naming
+    year_mfr YEAR,
+    type_registrant CHAR(1),
+    registrant_name VARCHAR(50),
+    street1 VARCHAR(33),
+    street2 VARCHAR(33),
+    city VARCHAR(18),
+    state CHAR(2),
+    zip_code CHAR(10),
+    registrant_region CHAR(1),
+    county_mail_code CHAR(3),
+    country_mail_code CHAR(2),
+    last_activity_date DATE,
+    cert_issue_date DATE,                    -- Updated to match load_aircraft_data naming
+    cert_requested VARCHAR(10),              -- Updated to match load_aircraft_data naming
+    type_aircraft CHAR(1),
+    type_engine CHAR(2),
+    status_code CHAR(2),
+    mode_s_code CHAR(8),
+    fractional_ownership CHAR(1),
+    airworthiness_date DATE,
+    other_name_1 VARCHAR(50),                -- Updated to match load_aircraft_data naming
+    other_name_2 VARCHAR(50),                -- Updated to match load_aircraft_data naming
+    other_name_3 VARCHAR(50),                -- Updated to match load_aircraft_data naming
+    other_name_4 VARCHAR(50),                -- Updated to match load_aircraft_data naming
+    other_name_5 VARCHAR(50),                -- Updated to match load_aircraft_data naming
+    expiration_date DATE,
+    unique_id CHAR(8),
+    kit_mfr VARCHAR(30),                     -- Updated to match load_aircraft_data naming
+    kit_model_code VARCHAR(20),              -- Updated to match load_aircraft_data naming
+    mode_s_code_hex CHAR(10)                 -- Updated to match load_aircraft_data naming
+);
+
+-- Aircraft Reference Table (ACFTREF.txt Data)
+CREATE TABLE IF NOT EXISTS aircraft_model (
+    model_code CHAR(7) PRIMARY KEY,
+    manufacturer_name VARCHAR(30),
+    model_name VARCHAR(20),
+    type_aircraft CHAR(1),
+    type_engine CHAR(2),
+    aircraft_category_code CHAR(1),
+    builder_certification_code CHAR(1),
+    number_of_engines INT,
+    number_of_seats INT,
+    aircraft_weight_category CHAR(7),
+    aircraft_cruising_speed INT,
+    tc_data_sheet VARCHAR(15),
+    tc_data_holder VARCHAR(50)
+);
+
+-- Engine Reference Table (ENGINE.txt Data)
+CREATE TABLE IF NOT EXISTS engine (
+    engine_code CHAR(5) PRIMARY KEY,
+    manufacturer_name VARCHAR(50),
+    engine_model_name VARCHAR(13),
+    type_engine CHAR(2),
+    horsepower INT,
+    pounds_of_thrust INT
+);
+
+-- File Metadata Table for tracking file information (Master, Engine, Aircraft Reference Files)
+CREATE TABLE IF NOT EXISTS file_metadata (
+    file_name VARCHAR(50) PRIMARY KEY,       -- Name of the file (e.g., MASTER.txt)
+    file_create_date DATETIME,               -- Creation or modification date of the file
+    file_md5sum CHAR(32)                     -- MD5 checksum for integrity checking
+);
+
+-- Sample data for file_metadata table
+-- Uncomment and run the following insert statements if desired for initial setup:
+-- INSERT INTO file_metadata (file_name, file_create_date, file_md5sum) VALUES
+-- ('Aircraft Reference File', '2024-10-17 18:49:01', '2f20edcf8e2aa3895278e15225d93d83'),
+-- ('Aircraft Registration Master File', '2024-10-17 18:49:03', '6e69d3967a3ee0e37ac6e080ad7ac200'),
+-- ('Engine Reference File', '2024-10-17 18:49:01', '98c2531d65307b992435961c9a197d2c');
+
+-- Indexing and Constraints
+CREATE INDEX idx_last_activity_date ON aircraft (last_activity_date);
+CREATE INDEX idx_cert_requested ON aircraft (cert_requested);
+

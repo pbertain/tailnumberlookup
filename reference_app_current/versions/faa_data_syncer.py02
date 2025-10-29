@@ -1,0 +1,96 @@
+import os
+import hashlib
+import mysql.connector
+from datetime import datetime
+
+# Load DB password from environment
+FAA_DB_PASSWORD = os.getenv('FAA_DB_PASSWORD')
+
+# Establish a connection to the MySQL database
+db = mysql.connector.connect(
+    host="localhost",
+    user="faa_user",  # Replace with actual MySQL username
+    password=FAA_DB_PASSWORD,  # Using environment variable for password
+    database="faa_aircraft"
+)
+
+cursor = db.cursor()
+
+# Helper function to calculate MD5 checksum of a file
+def calculate_md5(file_path):
+    hash_md5 = hashlib.md5()
+    with open(file_path, "rb") as file:
+        for chunk in iter(lambda: file.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
+# Function to check if file has changed
+def has_file_changed(file_name, file_path):
+    # Get file creation/modification time
+    file_create_date = datetime.fromtimestamp(os.path.getmtime(file_path))
+    
+    # Calculate file MD5 checksum
+    file_md5sum = calculate_md5(file_path)
+    
+    # Check existing metadata in DB
+    cursor.execute("SELECT file_create_date, file_md5sum FROM file_metadata WHERE file_name = %s", (file_name,))
+    result = cursor.fetchone()
+    
+    if result:
+        db_create_date, db_md5sum = result
+        if db_create_date == file_create_date and db_md5sum == file_md5sum:
+            return False  # No change
+        else:
+            # Update metadata in DB
+            cursor.execute("""
+                UPDATE file_metadata SET file_create_date = %s, file_md5sum = %s WHERE file_name = %s
+            """, (file_create_date, file_md5sum, file_name))
+    else:
+        # Insert new file metadata
+        cursor.execute("""
+            INSERT INTO file_metadata (file_name, file_create_date, file_md5sum) 
+            VALUES (%s, %s, %s)
+        """, (file_name, file_create_date, file_md5sum))
+    
+    db.commit()
+    return True  # File has changed
+
+# Function to load data if the file has changed
+def load_data_if_changed(file_name, file_path, load_function):
+    if has_file_changed(file_name, file_path):
+        print(f"Loading data for {file_name}...")
+        load_function(file_path)
+    else:
+        print(f"No changes detected for {file_name}, skipping load.")
+
+# Example function to load aircraft data
+def load_aircraft_data(file_path):
+    with open(file_path, 'r') as file:
+        for line in file:
+            n_number = line[0:5].strip()
+            serial_number = line[6:36].strip()
+            # [ ... parse the rest of the data fields as before ... ]
+            cursor.execute("""
+                INSERT INTO aircraft (n_number, serial_number, ...) 
+                VALUES (%s, %s, ...)
+            """, (n_number, serial_number, ...))
+
+    db.commit()
+
+# Main function to orchestrate loading
+def main():
+    # Define file paths
+    master_file = '/path/to/MASTER.txt'
+    acftref_file = '/path/to/ACFTREF.txt'
+    engine_file = '/path/to/ENGINE.txt'
+
+    # Load data for each file only if it has changed
+    load_data_if_changed('Aircraft Registration Master File', master_file, load_aircraft_data)
+    # Similar calls for acftref_file and engine_file
+
+    cursor.close()
+    db.close()
+
+if __name__ == "__main__":
+    main()
+

@@ -1,0 +1,252 @@
+import os
+import csv
+import pymysql
+import yaml
+import hashlib 
+from datetime import datetime
+
+# Version number for the script
+SCRIPT_VERSION = 18
+
+# Print the script version when the script starts
+print(f"Running faa_data_syncer.py version {SCRIPT_VERSION}")
+
+# Load DB password from environment
+FAA_DB_PASSWORD = os.getenv('FAA_DB_PASSWORD')
+
+# Load configuration from the correct YAML file
+def load_config():
+    config_file_path = os.path.join('config', 'faa_data_syncer.yaml')
+    with open(config_file_path, 'r') as file:
+        config = yaml.safe_load(file)
+    return config
+
+# Get data directory from the YAML config or environment variable
+def get_data_directory():
+    config = load_config()
+    return os.getenv('FAA_DATA_DIR', config.get('data_directory'))
+
+# Establish a connection to the MySQL database
+def connect_db():
+    return pymysql.connect(
+        host="localhost",
+        user="faa_user",  # Replace with your MySQL username
+        password=FAA_DB_PASSWORD,  # Using environment variable for password
+        database="faa_aircraft"
+    )
+
+# Helper function to truncate strings to avoid exceeding MySQL field lengths
+def truncate_string(value, max_length):
+    return value[:max_length] if value else value
+
+# Function to load aircraft model data from ACFTREF.txt using CSV parsing
+def load_aircraft_model_data(db_cursor, file_path):
+    with open(file_path, 'r', encoding='utf-8-sig') as file:
+        csv_reader = csv.DictReader(file)
+        for row in csv_reader:
+            model_code = truncate_string(row.get('MODEL CODE', '').strip(), 7) or None
+            manufacturer_name = truncate_string(row.get('MANUFACTURER NAME', '').strip(), 30) or None
+            model_name = truncate_string(row.get('MODEL NAME', '').strip(), 20) or None
+
+            db_cursor.execute(
+                """
+                INSERT INTO aircraft_model (
+                    model_code, manufacturer_name, model_name
+                ) VALUES (%s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    manufacturer_name = VALUES(manufacturer_name),
+                    model_name = VALUES(model_name)
+                """, (model_code, manufacturer_name, model_name)
+            )
+
+    db_cursor.connection.commit()
+
+# Function to load engine data from ENGINE.txt using CSV parsing
+def load_engine_data(db_cursor, file_path):
+    with open(file_path, 'r', encoding='utf-8-sig') as file:
+        csv_reader = csv.DictReader(file)
+        for row in csv_reader:
+            engine_code = truncate_string(row.get('ENGINE CODE', '').strip(), 5) or None
+            manufacturer_name = truncate_string(row.get('MANUFACTURER NAME', '').strip(), 50) or None
+            engine_model_name = truncate_string(row.get('ENGINE MODEL NAME', '').strip(), 13) or None
+
+            db_cursor.execute(
+                """
+                INSERT INTO engine (engine_code, manufacturer_name, engine_model_name)
+                VALUES (%s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    manufacturer_name = VALUES(manufacturer_name),
+                    engine_model_name = VALUES(engine_model_name)
+                """, (engine_code, manufacturer_name, engine_model_name)
+            )
+
+    db_cursor.connection.commit()
+
+# Function to load aircraft data from MASTER.txt using CSV parsing
+# Updated function to load aircraft data from MASTER.txt using CSV parsing
+# Updated function to load aircraft data from MASTER.txt using CSV parsing
+def load_aircraft_data(db_cursor, file_path):
+    with open(file_path, 'r', encoding='utf-8-sig') as file:
+        csv_reader = csv.DictReader(file)
+        for row in csv_reader:
+            n_number = truncate_string(row.get('N-NUMBER' ").strip() 5) or None
+            serial_number = truncate_string(row.get('SERIAL NUMBER' ").strip() 30) or None
+            mfr_model_code = truncate_string(row.get('MFR MDL CODE' ").strip() 7) or None
+            engine_mfr_model_code = truncate_string(row.get('ENG MFR MDL' ").strip() 5) or None
+            year_mfr = truncate_string(row.get('YEAR MFR' ").strip() 4) or None
+            registrant_type = truncate_string(row.get('REGISTRANT TYPE' '').strip() 1) or None
+            registrant_name = truncate_string(row.get('REGISTRANT NAME' '').strip() 50) or None
+            street1 = truncate_string(row.get('STREET' '').strip() 33) or None
+            street2 = truncate_string(row.get('STREET 2' '').strip() 33) or None
+            city = truncate_string(row.get('CITY' '').strip() 18) or None
+            state = truncate_string(row.get('STATE' '').strip() 2) or None
+            zip_code = truncate_string(row.get('ZIP CODE' '').strip() 10) or None
+            region = truncate_string(row.get('REGION' '').strip() 2) or None
+            county = truncate_string(row.get('COUNTY' '').strip() 50) or None
+            country = truncate_string(row.get('COUNTRY' '').strip() 50) or None
+            last_activity_date = datetime.strptime(row.get('LAST ACTION DATE' ")strip() '%Y%m%d').date() if row.get('LAST ACTION DATE' '').strip() else None
+            cert_issue_date = datetime.strptime(row.get('CERT ISSUE DATE' ")strip() '%Y%m%d').date() if row.get('CERT ISSUE DATE' '').strip() else None
+            cert_requested = truncate_string(row.get('CERTIFICATION' ").strip() 10) or None
+            type_aircraft = truncate_string(row.get('TYPE AIRCRAFT' ").strip() 1) or None
+            type_engine = truncate_string(row.get('TYPE ENGINE' ").strip() 2) or None
+            status_code = truncate_string(row.get('STATUS CODE' ").strip() 2) or None
+            mode_s_code = truncate_string(row.get('MODE S CODE' ").strip() 8) or None
+            fractional_ownership = truncate_string(row.get('FRACT OWNER' ").strip() 1) or None
+            airworthiness_date = datetime.strptime(row.get('AIR WORTH DATE' ")strip() '%Y%m%d').date() if row.get('AIR WORTH DATE' '').strip() else None
+            other_name_1 = truncate_string(row.get('OTHER NAMES(1)' ").strip() 50) or None
+            other_name_2 = truncate_string(row.get('OTHER NAMES(2)' ").strip() 50) or None
+            other_name_3 = truncate_string(row.get('OTHER NAMES(3)' ").strip() 50) or None
+            other_name_4 = truncate_string(row.get('OTHER NAMES(4)' ").strip() 50) or None
+            other_name_5 = truncate_string(row.get('OTHER NAMES(5)' ").strip() 50) or None
+            expiration_date = datetime.strptime(row.get('EXPIRATION DATE' ")strip() '%Y%m%d').date() if row.get('EXPIRATION DATE' '').strip() else None
+            unique_id = truncate_string(row.get('UNIQUE ID' ").strip() 8) or None
+            kit_mfr = truncate_string(row.get('KIT MFR' ").strip() 30) or None
+            kit_model_code = truncate_string(row.get(' KIT MODEL' ").strip() 20) or None
+            mode_s_code_hex = truncate_string(row.get('MODE S CODE HEX' ").strip() 10) or None
+
+            # Print the arguments to see if there is a mismatch
+            print("f"Values for query: {n_number}, {serial_number}, {mfr_model_code}, {engine_mfr_model_code}, {year_mfr}, {type_registrant}, {registrant_name}, {street1}, {street2}, {city}, {state}, {zip_code}, {registrant_region}, {county_mail_code}, {country_mail_code}, {last_activity_date}, {cert_issue_date}, {cert_requested}, {type_aircraft}, {type_engine}, {status_code}, {mode_s_code}, {fractional_ownership}, {airworthiness_date}, {other_name_1}, {other_name_2}, {other_name_3}, {other_name_4}, {other_name_5}, {expiration_date}, {unique_id}, {kit_mfr}, {kit_model_code}, {mode_s_code_hex}")
+
+            # Insert new data or update if it exists
+            db_cursor.execute(
+                INSERT INTO aircraft (
+                    n_number, serial_number, mfr_model_code, engine_mfr_model_code, year_mfr,
+                    type_registrant, registrant_name, street1, street2, city, state, zip_code,
+                    registrant_region, county_mail_code, country_mail_code, last_activity_date,
+                    cert_issue_date, cert_requested, type_aircraft, type_engine, status_code,
+                    mode_s_code, fractional_ownership, airworthiness_date, other_name_1,
+                    other_name_2, other_name_3, other_name_4, other_name_5, expiration_date,
+                    unique_id, kit_mfr, kit_model_code, mode_s_code_hex
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                          %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+
+                """
+                ON DUPLICATE KEY UPDATE
+                    serial_number = VALUES(serial_number),
+                    aircraft_mfr_model_code = VALUES(aircraft_mfr_model_code),
+                    engine_mfr_model_code = VALUES(engine_mfr_model_code),
+                    year_mfr = VALUES(year_mfr),
+                    aircraft_type = VALUES(aircraft_type),
+                    registration_type = VALUES(registration_type),
+                    registrant_type = VALUES(registrant_type),
+                    registrant_name = VALUES(registrant_name),
+                    street1 = VALUES(street1),
+                    street2 = VALUES(street2),
+                    city = VALUES(city),
+                    state = VALUES(state),
+                    zip_code = VALUES(zip_code),
+                    region = VALUES(region),
+                    county = VALUES(county),
+                    country = VALUES(country),
+                    airworthiness_date = VALUES(airworthiness_date),
+                    certification_code = VALUES(certification_code),
+                    co_owner = VALUES(co_owner),
+                    fractional_ownership = VALUES(fractional_ownership),
+                    airworthiness_class = VALUES(airworthiness_class),
+                    other_names = VALUES(other_names),
+                    expiration_date = VALUES(expiration_date),
+                    unique_id = VALUES(unique_id),
+                    kit_manufacturer = VALUES(kit_manufacturer),
+                    kit_model = VALUES(kit_model),
+                    amateur_built = VALUES(amateur_built),
+                    max_seating_capacity = VALUES(max_seating_capacity),
+                    max_takeoff_weight = VALUES(max_takeoff_weight),
+                    fuel_type = VALUES(fuel_type),
+                    engine_quantity = VALUES(engine_quantity)
+                """, (n_number, serial_number, aircraft_mfr_model_code, engine_mfr_model_code,
+                      year_mfr, aircraft_type, registration_type, registrant_type, registrant_name, street1, street2,
+                      city, state, zip_code, region, county, country, airworthiness_date, certification_code,
+                      co_owner, fractional_ownership, airworthiness_class, other_names, expiration_date, unique_id,
+                      kit_manufacturer, kit_model, amateur_built, max_seating_capacity, max_takeoff_weight,
+                      fuel_type, engine_quantity)
+            )
+
+    db_cursor.connection.commit()
+
+# Function to load data if the file has changed
+def load_data_if_changed(db_cursor, file_name, file_path, load_function):
+    if has_file_changed(db_cursor, file_name, file_path):
+        print(f"Loading data for {file_name}...")
+        load_function(db_cursor, file_path)
+    else:
+        print(f"No changes detected for {file_name}, skipping load.")
+
+# Function to calculate MD5 checksum of a file
+def calculate_md5(file_path):
+    hash_md5 = hashlib.md5()
+    with open(file_path, "rb") as file:
+        for chunk in iter(lambda: file.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
+# Function to check if a file has changed
+def has_file_changed(db_cursor, file_name, file_path):
+    file_create_date = datetime.fromtimestamp(os.path.getmtime(file_path))
+    file_md5sum = calculate_md5(file_path)
+
+    db_cursor.execute(
+        "SELECT file_create_date, file_md5sum FROM file_metadata WHERE file_name = %s", 
+        (file_name,)
+    )
+    result = db_cursor.fetchone()
+
+    if result:
+        db_create_date, db_md5sum = result
+        if db_create_date == file_create_date and db_md5sum == file_md5sum:
+            return False
+        else:
+            db_cursor.execute(
+                "UPDATE file_metadata SET file_create_date = %s, file_md5sum = %s WHERE file_name = %s",
+                (file_create_date, file_md5sum, file_name)
+            )
+    else:
+        db_cursor.execute(
+            "INSERT INTO file_metadata (file_name, file_create_date, file_md5sum) VALUES (%s, %s, %s)",
+            (file_name, file_create_date, file_md5sum)
+        )
+
+    db_cursor.connection.commit()
+    return True
+
+# Main function to orchestrate data syncing
+def main():
+    data_directory = get_data_directory()
+    db_connection = connect_db()
+    cursor = db_connection.cursor()
+
+    # Define file paths
+    master_file = os.path.join(data_directory, 'MASTER.txt')
+    acftref_file = os.path.join(data_directory, 'ACFTREF.txt')
+    engine_file = os.path.join(data_directory, 'ENGINE.txt')
+
+    # Load data for each file and link them together
+    load_data_if_changed(cursor, 'Aircraft Registration Master File', master_file, load_aircraft_data)
+    load_data_if_changed(cursor, 'Aircraft Reference File', acftref_file, load_aircraft_model_data)
+    load_data_if_changed(cursor, 'Engine Reference File', engine_file, load_engine_data)
+
+    cursor.close()
+    db_connection.close()
+
+if __name__ == "__main__":
+    main()
+

@@ -1,0 +1,105 @@
+<!-- index.html - Version 11 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAA Aircraft Lookup</title>
+    <link rel="stylesheet" href="https://www.airpuff.info/web/css/airpuff.css">
+</head>
+<body class="body_main">
+    <header class="basic">
+        <img src="https://airpuff.info/web/icons/airpuff-logo.png" alt="AirPuff Logo">
+        <h1 class="header">AirPuff Tail Number Lookup</h1>
+    </header>
+    <main>
+        <div class="header">Welcome to the AirPuff Aircraft Tail Number Lookup API</div>
+        <div class="paragraph">
+            <p>This API allows you to search for aircraft information by entering an N-Number.</p>
+            
+            <!-- Search Form -->
+            <form action="/aircraft" method="get" onsubmit="searchAircraft(event)">
+                <label for="nNumber">Enter N-Number:</label>
+                <input type="text" id="nNumber" name="nNumber" required>
+                <button type="submit">Search</button>
+            </form>
+            
+            <!-- Documentation Link -->
+            <p><a href="/docs">Access the API Documentation</a></p>
+        </div>
+
+        <!-- Search Result Output -->
+        <div id="result"></div>
+    </main>
+    <footer class="footer">
+        <p>Powered by AirPuff.</p>
+    </footer>
+
+    <script>
+        // Run when the page loads to check for nNumber in URL
+        document.addEventListener("DOMContentLoaded", () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const nNumber = urlParams.get("nNumber");
+
+            if (nNumber) {
+                document.getElementById("nNumber").value = nNumber;
+                searchAircraft(null, nNumber); // Call function to fetch and display results
+            }
+        });
+
+        async function searchAircraft(event, nNumber = null) {
+            if (event) event.preventDefault();  // Prevent form submission
+            
+            // Get the N-Number from the input field or URL parameter
+            const searchValue = nNumber || document.getElementById("nNumber").value;
+            if (!searchValue) return;
+
+            const response = await fetch(`/aircraft/${searchValue}`);
+            const resultDiv = document.getElementById("result");
+
+            if (response.ok) {
+                const data = await response.json();
+                resultDiv.innerHTML = formatAsVerticalTable(data);
+            } else {
+                resultDiv.innerHTML = "<p>Aircraft not found</p>";
+            }
+        }
+
+        function formatAsVerticalTable(data) {
+            // Adjusted field mappings with display order and updated labels
+            const fieldsToShow = {
+                "n_number": "N-Number",
+                "serial_number": "Serial Number",
+                "aircraft_manufacturer_name": "Aircraft Manufacturer Name",
+                "aircraft_model_name": "Aircraft Model Name",
+                "engine_manufacturer": "Engine Manufacturer",
+                "engine_model": "Engine Model",
+                "engine_horsepower": "Horsepower",
+                "registrant_name": "Registrant Name",
+                "street1": "Street",
+                "city": "City",
+                "state": "State",
+                "zip_code": "Zip Code",
+                "country_mail_code": "Country Code",
+                "last_activity_date": "Last Activity Date",
+                "certificate_issue_date": "Certificate Issue Date",
+                "airworthiness_classification_code": "Airworthiness Classification",
+                "approved_operation_codes": "Approved Operation Codes",
+                "airworthiness_date": "Airworthiness Date",
+                "unique_id": "Unique ID",
+                "expiration_date": "Expiration Date"
+            };
+
+            let table = `<table class="styled-table"><tbody>`;
+            for (const key in fieldsToShow) {
+                if (data[key] !== undefined) {
+                    table += `<tr><th>${fieldsToShow[key]}</th><td>${data[key] || ""}</td></tr>`;
+                }
+            }
+            table += `</tbody></table>`;
+            return table;
+        }
+    </script>
+</body>
+</html>
+

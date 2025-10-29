@@ -1,0 +1,52 @@
+<!-- output.html - Version 1.0 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aircraft Lookup Result</title>
+    <link rel="stylesheet" href="https://www.airpuff.info/web/css/airpuff.css">
+</head>
+<body class="body_main">
+    <div class="header">
+        <a href="index.html" class="button">← Back to Search</a>
+        <span class="header_yel">Aircraft Lookup Result</span>
+    </div>
+    <div id="resultContainer" class="basic">
+        <!-- Aircraft data will be populated here -->
+        <table class="table_main">
+            <tr><th class="th_titles">Field</th><th class="th_titles">Value</th></tr>
+            <tr><td class="td_titles">Tail Number</td><td id="nNumber" class="td"></td></tr>
+            <tr><td class="td_titles">Manufacturer</td><td id="manufacturer" class="td"></td></tr>
+            <tr><td class="td_titles">Model</td><td id="model" class="td"></td></tr>
+            <tr><td class="td_titles">Year</td><td id="year" class="td"></td></tr>
+            <!-- Add more rows for other fields as needed -->
+        </table>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tailNumber = urlParams.get('tailNumber');
+
+            fetch(`/lookup?tailNumber=${encodeURIComponent(tailNumber)}`, {
+                method: 'GET',
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Populate table fields with data
+                document.getElementById('nNumber').textContent = data.n_number || 'N/A';
+                document.getElementById('manufacturer').textContent = data.manufacturer_name || 'N/A';
+                document.getElementById('model').textContent = data.model_name || 'N/A';
+                document.getElementById('year').textContent = data.year_mfr || 'N/A';
+                // Add more fields here
+            })
+            .catch(error => {
+                console.error('Error fetching aircraft data:', error);
+                alert("Error fetching data. Please try again later.");
+            });
+        });
+    </script>
+</body>
+</html>
+

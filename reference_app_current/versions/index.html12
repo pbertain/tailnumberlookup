@@ -1,0 +1,126 @@
+<!-- index.html - Version 12 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAA Aircraft Lookup</title>
+    <link rel="stylesheet" href="https://www.airpuff.info/web/css/airpuff.css">
+</head>
+<body class="body_main">
+    <header class="basic">
+	<a href="https://www.airpuff.info/">
+            <img src="https://airpuff.info/web/icons/airpuff-logo.png" alt="AirPuff Logo">
+        </a>
+        <h1 class="header-title">AirPuff Tail Number Lookup</h1>
+    </header>
+    <main>
+        <div class="header">Welcome to the AirPuff Aircraft Tail Number Lookup API</div>
+        <div class="paragraph">
+            <p>This API allows you to search for aircraft information by entering an N-Number. Do not add the leading N</p>
+            
+            <!-- Search Form -->
+            <form action="/aircraft" method="get" onsubmit="prepareNNumber(event)">
+                <label for="n_number" class="large-label">Enter N-Number:</label>
+                <input type="text" id="n_number" name="n_number" required>
+                <button type="submit">Search</button>
+            </form>
+
+	    <!-- Button for API Documentation -->
+            <p><a href="/docs" class="button-link">Access the API Documentation</a></p>
+        <div id="result"></div>
+
+        </div>
+    </main>
+    <footer class="footer">
+        <p>Powered by AirPuff.</p>
+    </footer>
+
+    <script>
+        function prepareNNumber(event) {
+            // Prevent form submission temporarily
+            event.preventDefault();
+
+            // Get the input field and its value
+            const nNumberInput = document.getElementById("n_number");
+            let nNumberValue = nNumberInput.value;
+
+            // Remove leading "N" or "n" if present
+            if (nNumberValue.charAt(0).toLowerCase() === 'n') {
+                nNumberValue = nNumberValue.slice(1);
+            }
+
+            // Update the input field value and submit the form
+            nNumberInput.value = nNumberValue;
+            event.target.submit(); // Now submit the form with the updated value
+        }
+    </script>
+
+    <script>
+        // Run when the page loads to check for n_number in URL
+        document.addEventListener("DOMContentLoaded", () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const n_number = urlParams.get("n_number");
+
+            if (n_number) {
+                document.getElementById("n_number").value = n_number;
+                searchAircraft(null, n_number); // Call function to fetch and display results
+            }
+        });
+
+        async function searchAircraft(event, n_number = null) {
+            if (event) event.preventDefault();  // Prevent form submission
+            
+            // Get the N-Number from the input field or URL parameter
+            const searchValue = n_number || document.getElementById("n_number").value;
+            if (!searchValue) return;
+
+            const response = await fetch(`/aircraft/${searchValue}`);
+            const resultDiv = document.getElementById("result");
+
+            if (response.ok) {
+                const data = await response.json();
+                resultDiv.innerHTML = formatAsVerticalTable(data);
+            } else {
+                resultDiv.innerHTML = "<p>Aircraft not found</p>";
+            }
+        }
+
+        function formatAsVerticalTable(data) {
+            // Adjusted field mappings with display order and updated labels
+            const fieldsToShow = {
+                "n_number": "N-Number",
+                "registrant_name": "Registrant Name",
+                "aircraft_manufacturer_name": "Aircraft Manufacturer Name",
+                "aircraft_model_name": "Aircraft Model Name",
+                "serial_number": "Serial Number",
+                "engine_manufacturer": "Engine Manufacturer",
+                "engine_model": "Engine Model",
+                "engine_horsepower": "Horsepower",
+                "street1": "Street",
+                "city": "City",
+                "state": "State",
+                "zip_code": "Zip Code",
+                "country_mail_code": "Country Code",
+                "last_activity_date": "Last Activity Date",
+                "certificate_issue_date": "Certificate Issue Date",
+                "airworthiness_classification_code": "Airworthiness Classification",
+                "approved_operation_codes": "Approved Operation Codes",
+                "airworthiness_date": "Airworthiness Date",
+                "unique_id": "Unique ID",
+                "expiration_date": "Expiration Date"
+            };
+
+            let table = `<table class="styled-table"><tbody>`;
+            for (const key in fieldsToShow) {
+                if (data[key] !== undefined) {
+                    table += `<tr><th>${fieldsToShow[key]}</th><td>${data[key] || ""}</td></tr>`;
+                }
+            }
+            table += `</tbody></table>`;
+            return table;
+        }
+    </script>
+</body>
+</html>
+

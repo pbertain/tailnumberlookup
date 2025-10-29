@@ -1,0 +1,15 @@
+[Unit]
+Description=FAA Aircraft Lookup Service
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=root
+ExecStart=/var/bertain-cdn/faa-aircraft-lookup/bin/run_faa_aircraft_lookup.sh
+
+[Install]
+WantedBy=multi-user.target
+

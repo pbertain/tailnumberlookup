@@ -1,0 +1,5 @@
+# Example cron entry for running data sync every 12 hours
+#0 */12 * * * export FAA_DB_PASSWORD=$(cat /path/to/faa-aircraft-lookup/config/.db_password) && /path/to/faa-aircraft-lookup/faa_data_sync.py
+57 * * * * export FAA_DB_PASSWORD=$(cat /var/bertain-cdn/faa-aircraft-lookup/config/.db_password) && /var/bertain-cdn/faa-aircraft-lookup/faa_data_sync.py && logger "FAA Lookup DB Upload Complete - `date`"
+
+

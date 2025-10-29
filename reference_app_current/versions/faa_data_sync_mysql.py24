@@ -1,0 +1,116 @@
+import os
+import pandas as pd
+import pymysql
+from sqlalchemy import create_engine
+
+# Load environment variables for the password
+MYSQL_PASSWORD = os.getenv('FAA_DB_PASSWORD')
+
+# Establish MySQL connection
+engine = create_engine(f'mysql+pymysql://faa_user:{MYSQL_PASSWORD}@localhost/faa_aircraft')
+
+# Function to clean comma values
+def clean_comma_values(value):
+    return value.replace(',', '') if isinstance(value, str) else value
+
+def load_data():
+    try:
+        # Load aircraft model data (from ACFTREF.txt)
+        aircraft_model_df = pd.read_csv('/var/bertain-cdn/faa-aircraft-lookup/data/FAA_Database/ACFTREF.txt', delimiter=',', header=None, names=[
+            'mfr_mdl_code', 'aircraft_mfr', 'aircraft_model', 'type_aircraft', 'type_engine', 'aircraft_category',
+            'builder_certification', 'number_of_engines', 'number_of_seats', 'ac_weight', 'speed', 'tc_data_sheet', 'tc_data_holder'
+        ])
+        aircraft_model_df = aircraft_model_df.applymap(lambda x: clean_comma_values(x) if isinstance(x, str) else x)
+        aircraft_model_df.fillna(value='', inplace=True)
+        print("Aircraft Model Data (after cleaning):")
+        print(aircraft_model_df.head())
+        aircraft_model_df.to_sql('aircraft_model', engine, if_exists='append', index=False)
+        print("Aircraft model data loaded successfully.")
+
+        # Load engine data (from ENGINE.txt)
+        engine_df = pd.read_csv('/var/bertain-cdn/faa-aircraft-lookup/data/FAA_Database/ENGINE.txt', delimiter=',', header=None, names=[
+            'eng_mfr_mdl', 'engine_mfr', 'engine_model', 'type_engine', 'engine_horsepower', 'engine_thrust'
+        ])
+        engine_df = engine_df.applymap(lambda x: clean_comma_values(x) if isinstance(x, str) else x)
+        engine_df.fillna(value='', inplace=True)
+        print("Engine Data (after cleaning):")
+        print(engine_df.head())
+        engine_df.to_sql('engine', engine, if_exists='append', index=False)
+        print("Engine data loaded successfully.")
+
+        # Load aircraft data (from MASTER.txt)
+        aircraft_df = pd.read_csv('/var/bertain-cdn/faa-aircraft-lookup/data/FAA_Database/MASTER.txt', delimiter=',', header=None, names=[
+            'tail_number', 'serial_number', 'mfr_mdl_code', 'eng_mfr_mdl', 'year_mfr', 'type_registrant',
+            'owner_name', 'street', 'city', 'state', 'zip_code', 'expiration_date', 'unique_id', 'mode_s_code_hex'
+        ])
+        aircraft_df = aircraft_df.applymap(lambda x: clean_comma_values(x) if isinstance(x, str) else x)
+        aircraft_df.fillna(value='', inplace=True)
+        print("Aircraft Data (after cleaning):")
+        print(aircraft_df.head())
+        aircraft_df.to_sql('aircraft', engine, if_exists='append', index=False)
+        print("Aircraft data loaded successfully.")
+
+    except Exception as e:
+        print(f"Error during data loading: {e}")
+
+def drop_and_create_tables():
+    try:
+        with engine.connect() as connection:
+            connection.execute("DROP TABLE IF EXISTS aircraft CASCADE;")
+            connection.execute("DROP TABLE IF EXISTS engine CASCADE;")
+            connection.execute("DROP TABLE IF EXISTS aircraft_model CASCADE;")
+            connection.execute("""
+                CREATE TABLE aircraft_model (
+                    mfr_mdl_code VARCHAR(10) PRIMARY KEY,
+                    aircraft_mfr VARCHAR(100),
+                    aircraft_model VARCHAR(100),
+                    type_aircraft INT,
+                    type_engine INT,
+                    aircraft_category INT,
+                    builder_certification BOOLEAN,
+                    number_of_engines INT,
+                    number_of_seats INT,
+                    ac_weight VARCHAR(50),
+                    speed INT,
+                    tc_data_sheet VARCHAR(50),
+                    tc_data_holder VARCHAR(50)
+                );
+            """)
+            connection.execute("""
+                CREATE TABLE engine (
+                    eng_mfr_mdl VARCHAR(10) PRIMARY KEY,
+                    engine_mfr VARCHAR(100),
+                    engine_model VARCHAR(100),
+                    type_engine VARCHAR(50),
+                    engine_horsepower FLOAT,
+                    engine_thrust FLOAT
+                );
+            """)
+            connection.execute("""
+                CREATE TABLE aircraft (
+                    tail_number VARCHAR(10) PRIMARY KEY,
+                    serial_number VARCHAR(50),
+                    mfr_mdl_code VARCHAR(10),
+                    eng_mfr_mdl VARCHAR(10),
+                    year_mfr INT,
+                    type_registrant INT,
+                    owner_name VARCHAR(100),
+                    street VARCHAR(100),
+                    city VARCHAR(50),
+                    state VARCHAR(50),
+                    zip_code VARCHAR(10),
+                    expiration_date DATE,
+                    unique_id INT,
+                    mode_s_code_hex VARCHAR(10),
+                    FOREIGN KEY (mfr_mdl_code) REFERENCES aircraft_model(mfr_mdl_code),
+                    FOREIGN KEY (eng_mfr_mdl) REFERENCES engine(eng_mfr_mdl)
+                );
+            """)
+        print("Dropped and recreated all tables successfully.")
+    except Exception as e:
+        print(f"Error during table creation: {e}")
+
+if __name__ == "__main__":
+    drop_and_create_tables()
+    load_data()
+

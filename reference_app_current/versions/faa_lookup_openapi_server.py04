@@ -1,0 +1,49 @@
+import os
+import pymysql
+from fastapi import FastAPI, HTTPException
+
+# Version of the FastAPI app
+APP_VERSION = 4
+
+# Print the app version when the app starts
+print(f"Running faa-data-sync API version {APP_VERSION}")
+
+app = FastAPI()
+
+# Database connection details
+DB_HOST = 'localhost'
+DB_USER = 'faa_user'
+DB_PASSWORD = os.getenv('FAA_DB_PASSWORD')  # Retrieve password from environment variable
+DB_NAME = 'faa_aircraft'
+
+# Function to connect to the database
+def get_db_connection():
+    return pymysql.connect(
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME
+    )
+
+# Endpoint to retrieve aircraft by N-number
+@app.get("/aircraft/{n_number}")
+def get_aircraft(n_number: str):
+    # Connect to the database
+    connection = get_db_connection()
+    cursor = connection.cursor(pymysql.cursors.DictCursor)
+
+    # Query the aircraft by N-number
+    cursor.execute("SELECT * FROM aircraft WHERE n_number = %s", (n_number,))
+    aircraft = cursor.fetchone()
+
+    # Close the cursor and connection
+    cursor.close()
+    connection.close()
+
+    # If no aircraft is found, raise a 404 error
+    if aircraft is None:
+        raise HTTPException(status_code=404, detail="Aircraft not found")
+
+    # Return the aircraft data
+    return aircraft
+

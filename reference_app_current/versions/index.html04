@@ -1,0 +1,36 @@
+<!-- index.html - Version 4 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AirPuff Aircraft Lookup</title>
+    <link rel="stylesheet" href="https://airpuff.info/web/css/airpuff.css">
+</head>
+<body class="body_main">
+    <div class="header">Welcome to the AirPuff Aircraft Lookup API</div>
+    <div class="paragraph">
+        <p>This API allows you to search for aircraft information by entering an N-Number.</p>
+        
+        <!-- Search Form -->
+	<form action="/output.html" method="get" onsubmit="redirectOutput(event)">
+            <label for="nNumber">Enter N-Number:</label>
+            <input type="text" id="nNumber" name="nNumber" required>
+            <button type="submit">Search</button>
+        </form>
+        
+        <!-- Documentation Link -->
+        <p><a href="/docs">Access the API Documentation</a></p>
+    </div>
+
+    <!-- Script to handle form submission -->
+    <script>
+        function redirectOutput(event) {
+            event.preventDefault();
+            const nNumber = document.getElementById('nNumber').value;
+            window.location.href = `/output.html?tailNumber=${encodeURIComponent(nNumber)}`;
+        }
+    </script>
+
+</body>
+</html>
+

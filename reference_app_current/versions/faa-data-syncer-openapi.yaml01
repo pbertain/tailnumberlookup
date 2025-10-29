@@ -1,0 +1,168 @@
+openapi: 3.0.3
+info:
+  title: FAA Aircraft Lookup API
+  description: API to retrieve FAA aircraft, model, and engine information.
+  version: 1.0.0
+servers:
+  - url: https://faa-aircraft-lookup.airpuff.info/api/v1
+    description: Lookup tool for tail numbers using the latest FAA aircraft registration database.
+paths:
+  /aircraft:
+    get:
+      summary: Retrieve all aircraft records
+      description: Get a list of all registered aircraft.
+      responses:
+        '200':
+          description: A list of aircraft
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Aircraft'
+        '404':
+          description: No aircraft found
+      parameters:
+        - name: n_number
+          in: query
+          description: Aircraft registration number (N-number)
+          required: false
+          schema:
+            type: string
+            example: N12345
+
+  /aircraft/{n_number}:
+    get:
+      summary: Retrieve a specific aircraft by N-number
+      description: Get details of an aircraft by its N-number.
+      parameters:
+        - name: n_number
+          in: path
+          required: true
+          schema:
+            type: string
+            example: N12345
+      responses:
+        '200':
+          description: Aircraft details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Aircraft'
+        '404':
+          description: Aircraft not found
+
+  /aircraft_model/{model_code}:
+    get:
+      summary: Retrieve a specific aircraft model by model code
+      description: Get details of an aircraft model by its model code.
+      parameters:
+        - name: model_code
+          in: path
+          required: true
+          schema:
+            type: string
+            example: ABC123
+      responses:
+        '200':
+          description: Aircraft model details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AircraftModel'
+        '404':
+          description: Model not found
+
+  /engine/{engine_code}:
+    get:
+      summary: Retrieve a specific engine by engine code
+      description: Get details of an engine by its engine code.
+      parameters:
+        - name: engine_code
+          in: path
+          required: true
+          schema:
+            type: string
+            example: ENG001
+      responses:
+        '200':
+          description: Engine details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Engine'
+        '404':
+          description: Engine not found
+
+components:
+  schemas:
+    Aircraft:
+      type: object
+      properties:
+        n_number:
+          type: string
+          description: Aircraft registration number (N-number)
+        serial_number:
+          type: string
+          description: Aircraft serial number
+        aircraft_mfr_model_code:
+          type: string
+          description: Manufacturer model code of the aircraft
+        engine_mfr_model_code:
+          type: string
+          description: Manufacturer model code of the engine
+        year_mfr:
+          type: integer
+          description: Year of manufacture
+        registrant_name:
+          type: string
+          description: Name of the aircraft registrant
+        city:
+          type: string
+          description: City of the registrant
+        state:
+          type: string
+          description: State of the registrant
+        zip_code:
+          type: string
+          description: ZIP code of the registrant
+
+    AircraftModel:
+      type: object
+      properties:
+        model_code:
+          type: string
+          description: Aircraft model code
+        manufacturer_name:
+          type: string
+          description: Manufacturer of the aircraft
+        model_name:
+          type: string
+          description: Model name of the aircraft
+        number_of_engines:
+          type: integer
+          description: Number of engines on the aircraft
+        number_of_seats:
+          type: integer
+          description: Number of seats in the aircraft
+
+    Engine:
+      type: object
+      properties:
+        engine_code:
+          type: string
+          description: Engine code
+        manufacturer_name:
+          type: string
+          description: Manufacturer of the engine
+        engine_model_name:
+          type: string
+          description: Engine model name
+        horsepower:
+          type: integer
+          description: Horsepower of the engine
+        pounds_of_thrust:
+          type: integer
+          description: Pounds of thrust (for jet engines)
+
+

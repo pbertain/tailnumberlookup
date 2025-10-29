@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirPuff Tail Number Lookup</title>
+    <link rel="stylesheet" href="https://www.airpuff.info/web/css/airpuff.css">
+</head>
+<body class="body_main">
+
+    <!-- Header with image and title -->
+    <header class="basic" style="display: flex; align-items: center; padding: 20px;">
+        <img src="https://airpuff.info/web/icons/airpuff-logo.png" alt="AirPuff Logo" style="width: 100px; margin-right: 20px;">
+        <h1 class="header">AirPuff Tail Number Lookup</h1>
+    </header>
+
+    <!-- Form for tail number lookup -->
+    <section class="basic" style="margin: 40px;">
+        <form id="tailNumberForm">
+            <label for="tailNumber" class="paragraph">Enter Tail Number (N-number):</label>
+            <input type="text" id="tailNumber" name="tailNumber" placeholder="e.g., 538CD" required style="padding: 10px; margin: 10px;">
+            <button type="submit" class="close" style="padding: 10px;">Lookup</button>
+        </form>
+    </section>
+
+    <!-- Placeholder for results -->
+    <div id="result" class="basic" style="margin-top: 30px;"></div>
+
+    <!-- JavaScript for form submission -->
+    <script>
+        document.getElementById('tailNumberForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const tailNumber = document.getElementById('tailNumber').value;
+
+            try {
+                const response = await fetch(`/aircraft/${tailNumber}`);
+                const result = await response.json();
+
+                document.getElementById('result').innerHTML = `
+                    <h2 class="header_yel">Aircraft Details:</h2>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+            } catch (error) {
+                document.getElementById('result').innerHTML = `<p class="paragraph">Error: Unable to fetch data.</p>`;
+            }
+        });
+    </script>
+</body>
+</html>
+

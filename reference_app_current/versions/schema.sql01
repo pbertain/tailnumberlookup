@@ -1,0 +1,48 @@
+-- Aircraft Table
+CREATE TABLE aircraft (
+    tail_number VARCHAR(5) PRIMARY KEY,
+    serial_number VARCHAR(30),
+    mfr_mdl_code VARCHAR(10),
+    eng_mfr_mdl VARCHAR(5),
+    year_mfr INTEGER,
+    owner_name VARCHAR(100), -- Expanded owner_name length
+    street VARCHAR(100),     -- Expanded street length
+    street2 VARCHAR(100),    -- Expanded street2 length
+    city VARCHAR(50),        -- Expanded city length
+    state CHAR(2),
+    zip_code VARCHAR(10),
+    region CHAR(1),
+    county VARCHAR(10),      -- Expanded county length
+    country CHAR(3),         -- Expanded country length
+    cert_issue_date DATE,
+    certification VARCHAR(10), -- Expanded certification field
+    type_aircraft VARCHAR(10), -- Expanded type_aircraft field
+    type_engine VARCHAR(10),   -- Expanded type_engine field
+    air_worth_date DATE,
+    expiration_date DATE,
+    FOREIGN KEY (mfr_mdl_code) REFERENCES aircraft_model(mfr_mdl_code),
+    FOREIGN KEY (eng_mfr_mdl) REFERENCES engine(eng_mfr_mdl)
+);
+
+-- Aircraft Model Table (restoring the 9 fields)
+CREATE TABLE aircraft_model (
+    mfr_mdl_code VARCHAR(10) PRIMARY KEY,
+    aircraft_mfr VARCHAR(50),
+    aircraft_model VARCHAR(50),
+    type_aircraft VARCHAR(2),
+    type_engine VARCHAR(2),
+    aircraft_category VARCHAR(2),
+    builder_certification VARCHAR(2),
+    number_of_engines INT
+);
+
+-- Engine Table
+CREATE TABLE engine (
+    eng_mfr_mdl VARCHAR(5) PRIMARY KEY,
+    manufacturer VARCHAR(50), -- Updated based on the length of data
+    model VARCHAR(50),        -- Updated based on the length of data
+    type_engine VARCHAR(10),  -- Added missing type_engine field
+    engine_horsepower INTEGER,
+    engine_thrust INTEGER
+);
+

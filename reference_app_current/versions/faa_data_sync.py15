@@ -1,0 +1,163 @@
+import os
+import pandas as pd
+from sqlalchemy import create_engine, text
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Database configuration
+DB_PASSWORD = os.getenv('FAA_DB_PASSWORD')
+print(f"The password is {DB_PASSWORD}")
+DATABASE_URL = f"postgresql://postgres:{DB_PASSWORD}@localhost:5432/faa_aircraft"
+
+# Create SQLAlchemy engine
+engine = create_engine(DATABASE_URL)
+
+# Define the data directory
+data_dir = "/var/bertain-cdn/faa-aircraft-lookup/data/FAA_Database"
+
+def drop_and_create_tables():
+    with engine.connect() as connection:
+        connection.execute(text("DROP TABLE IF EXISTS aircraft CASCADE;"))
+        connection.execute(text("DROP TABLE IF EXISTS aircraft_model CASCADE;"))
+        connection.execute(text("DROP TABLE IF EXISTS engine CASCADE;"))
+        print("Dropped all tables successfully with CASCADE.")
+
+        # Recreate the tables
+        connection.execute(text("""
+            CREATE TABLE aircraft (
+                tail_number VARCHAR(10) PRIMARY KEY,
+                serial_number VARCHAR(30),
+                mfr_mdl_code VARCHAR(10),
+                eng_mfr_mdl VARCHAR(10),
+                year_mfr INT,
+                owner_name VARCHAR(100),
+                street VARCHAR(100),
+                street2 VARCHAR(100),
+                city VARCHAR(50),
+                state VARCHAR(2),
+                zip_code VARCHAR(10),
+                region VARCHAR(2),
+                county VARCHAR(10),
+                country VARCHAR(3),
+                cert_issue_date DATE,
+                certification VARCHAR(10),
+                type_aircraft VARCHAR(10),
+                type_engine VARCHAR(10),
+                air_worth_date DATE,
+                expiration_date DATE
+            );
+        """))
+
+        connection.execute(text("""
+            CREATE TABLE aircraft_model (
+                mfr_mdl_code VARCHAR(10) PRIMARY KEY,
+                aircraft_mfr VARCHAR(50),
+                aircraft_model VARCHAR(50),
+                type_aircraft VARCHAR(2),
+                type_engine VARCHAR(2),
+                aircraft_category VARCHAR(2),
+                builder_certification VARCHAR(2),
+                number_of_engines INT
+            );
+        """))
+
+        connection.execute(text("""
+            CREATE TABLE engine (
+                eng_mfr_mdl VARCHAR(10) PRIMARY KEY,
+                engine_mfr VARCHAR(50),
+                engine_model VARCHAR(50),
+                type_engine VARCHAR(2),
+                engine_horsepower INT,
+                engine_thrust INT
+            );
+        """))
+        print("Recreated all tables successfully.")
+
+def clean_number_of_engines(value):
+    try:
+        # Try to convert to integer
+        return int(value)
+    except (ValueError, TypeError):
+        # Return 0 if conversion fails
+        return 0
+
+def load_data():
+    # Load aircraft model data from ACFTREF.txt
+    aircraft_model_df = pd.read_fwf(
+        f"{data_dir}/ACFTREF.txt",
+        colspecs=[(0, 7), (9, 38), (40, 59), (61, 62), (63, 64), (66, 67), (68, 69), (70, 72)],
+        names=[
+            "mfr_mdl_code", "aircraft_mfr", "aircraft_model", "type_aircraft", "type_engine",
+            "aircraft_category", "builder_certification", "number_of_engines"
+        ]
+    )
+    # Clean data by stripping whitespace and ensuring number_of_engines is an integer
+    aircraft_model_df = aircraft_model_df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+    aircraft_model_df['number_of_engines'] = aircraft_model_df['number_of_engines'].apply(clean_number_of_engines)
+    
+    print("Aircraft Model Data (after cleaning):")
+    print(aircraft_model_df.head())  # Display the first few rows of data
+
+    # Load aircraft data from MASTER.txt
+    aircraft_df = pd.read_csv(
+        f"{data_dir}/MASTER.txt",
+        names=[
+            "tail_number", "serial_number", "mfr_mdl_code", "eng_mfr_mdl", "year_mfr",
+            "owner_name", "street", "street2", "city", "state", "zip_code", "region",
+            "county", "country", "cert_issue_date", "certification", "type_aircraft", 
+            "type_engine", "air_worth_date", "expiration_date"
+        ]
+    )
+    print("Aircraft Data:")
+    print(aircraft_df.head())  # Display the first few rows of data
+
+    # Load engine data from ENGINE.txt
+    engine_df = pd.read_fwf(
+        f"{data_dir}/ENGINE.txt",
+        colspecs=[(0, 5), (7, 16), (18, 30), (32, 33), (35, 39), (41, 46)],
+        names=["eng_mfr_mdl", "engine_mfr", "engine_model", "type_engine", "engine_horsepower", "engine_thrust"]
+    )
+    print("Engine Data:")
+    print(engine_df.head())  # Display the first few rows of data
+
+    # Insert data into the database
+    try:
+        with engine.connect() as connection:
+            # Insert aircraft model data with conflict handling
+            for _, row in aircraft_model_df.iterrows():
+                insert_stmt = text("""
+                    INSERT INTO aircraft_model (mfr_mdl_code, aircraft_mfr, aircraft_model, type_aircraft, type_engine, aircraft_category, builder_certification, number_of_engines)
+                    VALUES (:mfr_mdl_code, :aircraft_mfr, :aircraft_model, :type_aircraft, :type_engine, :aircraft_category, :builder_certification, :number_of_engines)
+                    ON CONFLICT (mfr_mdl_code) DO NOTHING;
+                """)
+                connection.execute(insert_stmt, {
+                    'mfr_mdl_code': row['mfr_mdl_code'],
+                    'aircraft_mfr': row['aircraft_mfr'],
+                    'aircraft_model': row['aircraft_model'],
+                    'type_aircraft': row['type_aircraft'],
+                    'type_engine': row['type_engine'],
+                    'aircraft_category': row['aircraft_category'],
+                    'builder_certification': row['builder_certification'],
+                    'number_of_engines': row['number_of_engines']
+                })
+
+            # Insert aircraft data
+            aircraft_df.to_sql('aircraft', con=connection, if_exists='append', index=False)
+
+            # Insert engine data
+            engine_df.to_sql('engine', con=connection, if_exists='append', index=False)
+
+        print("Data loaded into the database successfully.")
+    
+    except Exception as e:
+        print(f"Error during data insertion: {e}")
+
+def main():
+    drop_and_create_tables()
+    load_data()
+
+if __name__ == "__main__":
+    main()
+

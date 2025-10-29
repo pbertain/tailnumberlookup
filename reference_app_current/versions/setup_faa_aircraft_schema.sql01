@@ -1,0 +1,50 @@
+-- Load into PostGRES with: psql -U postgres -d faa_aircraft -f setup_faa_aircraft_schema.sql
+
+-- Aircraft Table
+CREATE TABLE aircraft (
+    tail_number VARCHAR(15) PRIMARY KEY,
+    serial_number VARCHAR(35),
+    mfr_mdl_code VARCHAR(15),
+    eng_mfr_mdl VARCHAR(15),
+    year_mfr INTEGER,
+    owner_name VARCHAR(105),
+    street VARCHAR(105),
+    street2 VARCHAR(105),
+    city VARCHAR(55),
+    state CHAR(5),
+    zip_code VARCHAR(15),
+    region CHAR(6),
+    county VARCHAR(8),
+    country CHAR(7),
+    cert_issue_date DATE,
+    certification CHAR(6),
+    type_aircraft CHAR(6),
+    type_engine CHAR(7),
+    air_worth_date DATE,
+    expiration_date DATE,
+    FOREIGN KEY (mfr_mdl_code) REFERENCES aircraft_model(mfr_mdl_code),
+    FOREIGN KEY (eng_mfr_mdl) REFERENCES engine(eng_mfr_mdl)
+);
+
+-- Aircraft Model Table
+CREATE TABLE aircraft_model (
+    mfr_mdl_code VARCHAR(15) PRIMARY KEY,
+    aircraft_mfr VARCHAR(55),
+    aircraft_model VARCHAR(55),
+    type_aircraft VARCHAR(7),
+    type_engine VARCHAR(7),
+    aircraft_category VARCHAR(7),
+    builder_certification VARCHAR(7),
+    number_of_engines INT
+);
+
+-- Engine Table
+CREATE TABLE engine (
+    eng_mfr_mdl VARCHAR(15) PRIMARY KEY,
+    engine_mfr VARCHAR(55),
+    engine_model VARCHAR(55),
+    type_engine VARCHAR(7),
+    engine_horsepower INT,
+    engine_thrust INT
+);
+

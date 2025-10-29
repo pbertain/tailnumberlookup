@@ -1,0 +1,88 @@
+import os
+import pymysql
+import logging
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import Optional
+
+# Version of the FastAPI app
+APP_VERSION = 6
+
+# Print the app version when the app starts
+print(f"Running faa-data-sync API version {APP_VERSION}")
+
+# Enable logging
+logging.basicConfig(level=logging.INFO)
+
+app = FastAPI()
+
+# Database connection details
+DB_HOST = 'localhost'
+DB_USER = 'faa_user'
+DB_PASSWORD = os.getenv('FAA_DB_PASSWORD')  # Retrieve password from environment variable
+DB_NAME = 'faa_aircraft'
+
+# Function to connect to the database
+def get_db_connection():
+    return pymysql.connect(
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME
+    )
+
+# Response models that match the MySQL table structure
+
+class AircraftResponseModel(BaseModel):
+    n_number: str
+    serial_number: Optional[str]
+    aircraft_mfr_model_code: Optional[str]
+    engine_mfr_model_code: Optional[str]
+    year_mfr: Optional[int]
+    type_registrant: Optional[str]
+    registrant_name: Optional[str]
+    street1: Optional[str]
+    street2: Optional[str]
+    city: Optional[str]
+    state: Optional[str]
+    zip_code: Optional[str]
+    registrant_region: Optional[str]
+    county_mail_code: Optional[str]
+    country_mail_code: Optional[str]
+    last_activity_date: Optional[str]
+    certificate_issue_date: Optional[str]
+    airworthiness_classification_code: Optional[str]
+    approved_operation_codes: Optional[str]
+    type_aircraft: Optional[str]
+    type_engine: Optional[str]
+    status_code: Optional[str]
+    mode_s_code: Optional[str]
+    fractional_ownership: Optional[str]
+    airworthiness_date: Optional[str]
+    unique_id: Optional[str]
+    expiration_date: Optional[str]
+    model_code: Optional[str]
+    engine_code: Optional[str]
+
+# Endpoint to retrieve aircraft by N-number
+@app.get("/aircraft/{n_number}", response_model=AircraftResponseModel)
+def get_aircraft(n_number: str):
+    connection = get_db_connection()
+    cursor = connection.cursor(pymysql.cursors.DictCursor)
+
+    logging.info(f"Searching for aircraft with N-number: {n_number}")
+    
+    cursor.execute("SELECT * FROM aircraft WHERE LOWER(n_number) = LOWER(%s)", (n_number,))
+    aircraft = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+
+    if aircraft is None:
+        logging.info(f"No aircraft found for N-number: {n_number}")
+        raise HTTPException(status_code=404, detail="Aircraft not found")
+
+    logging.info(f"Aircraft data: {aircraft}")
+
+    return aircraft
+

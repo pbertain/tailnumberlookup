@@ -1,0 +1,72 @@
+-- Load into MySQL with: mysql -u root -p faa_aircraft < config/faa_aircraft_schema.sql
+
+CREATE DATABASE IF NOT EXISTS faa_aircraft;
+USE faa_aircraft;
+
+-- Aircraft Table (Master Registration Data)
+CREATE TABLE IF NOT EXISTS aircraft (
+    n_number CHAR(5) PRIMARY KEY,
+    serial_number VARCHAR(30),
+    aircraft_mfr_model_code CHAR(7),
+    engine_mfr_model_code CHAR(5),
+    year_mfr YEAR,
+    type_registrant CHAR(1),
+    registrant_name VARCHAR(50),
+    street1 VARCHAR(33),
+    street2 VARCHAR(33),
+    city VARCHAR(18),
+    state CHAR(2),
+    zip_code CHAR(10),
+    registrant_region CHAR(1),
+    county_mail_code CHAR(3),
+    country_mail_code CHAR(2),
+    last_activity_date DATE,
+    certificate_issue_date DATE,
+    airworthiness_classification_code CHAR(1),
+    approved_operation_codes VARCHAR(9),
+    type_aircraft CHAR(1),
+    type_engine CHAR(2),
+    status_code CHAR(2),
+    mode_s_code CHAR(8),
+    fractional_ownership CHAR(1),
+    airworthiness_date DATE,
+    unique_id CHAR(8),
+    expiration_date DATE,
+    model_code CHAR(7),  -- Added to link with aircraft_model table
+    engine_code CHAR(5)   -- Added to link with engine table
+);
+
+-- Aircraft Reference Table (ACFTREF.txt Data)
+CREATE TABLE IF NOT EXISTS aircraft_model (
+    model_code CHAR(7) PRIMARY KEY,
+    manufacturer_name VARCHAR(30),
+    model_name VARCHAR(20),
+    type_aircraft CHAR(1),
+    type_engine CHAR(2),
+    aircraft_category_code CHAR(1),
+    builder_certification_code CHAR(1),
+    number_of_engines INT,
+    number_of_seats INT,
+    aircraft_weight_category CHAR(7),
+    aircraft_cruising_speed INT,
+    tc_data_sheet VARCHAR(15),
+    tc_data_holder VARCHAR(50)
+);
+
+-- Engine Reference Table (ENGINE.txt Data)
+CREATE TABLE IF NOT EXISTS engine (
+    engine_code CHAR(5) PRIMARY KEY,
+    manufacturer_name VARCHAR(10),
+    engine_model_name VARCHAR(13),
+    type_engine CHAR(2),
+    horsepower INT,
+    pounds_of_thrust INT
+);
+
+-- File Metadata Table
+CREATE TABLE IF NOT EXISTS file_metadata (
+    file_name VARCHAR(50) PRIMARY KEY,  -- Name of the file (e.g., MASTER.txt)
+    file_create_date DATETIME,          -- Creation or modification date of the file
+    file_md5sum CHAR(32)                -- MD5 checksum for integrity checking
+);
+

@@ -1,0 +1,138 @@
+import pandas as pd
+import pymysql
+from sqlalchemy import create_engine
+import os
+
+# Set up the connection string
+MYSQL_PASSWORD = os.getenv('FAA_DB_PASSWORD')
+db_url = f"mysql+pymysql://faa_user:{MYSQL_PASSWORD}@localhost/faa_aircraft"
+
+# Create the SQLAlchemy engine
+engine = create_engine(db_url)
+
+def clean_comma_values(value):
+    if isinstance(value, str):
+        return value.replace(",", "")
+    return value
+
+def load_data():
+    try:
+        # Load and clean aircraft_model data
+        aircraft_model_df = pd.read_csv('data/FAA_Database/aircraft_model.csv', low_memory=False)
+        aircraft_model_df.fillna(value='', inplace=True)  # Fill NaN values with empty string
+        aircraft_model_df = aircraft_model_df.applymap(lambda x: clean_comma_values(x) if isinstance(x, str) else x)
+
+        print("Aircraft Model Data (after cleaning):")
+        print(aircraft_model_df.head())
+
+        # Insert into aircraft_model table
+        aircraft_model_df.to_sql('aircraft_model', con=engine, if_exists='append', index=False)
+
+        print("Aircraft model data loaded successfully.")
+
+        # Load and clean aircraft data
+        aircraft_df = pd.read_csv('data/FAA_Database/aircraft.csv', low_memory=False)
+        aircraft_df.fillna(value='', inplace=True)  # Fill NaN values with empty string
+        aircraft_df = aircraft_df.applymap(lambda x: clean_comma_values(x) if isinstance(x, str) else x)
+
+        print("Aircraft Data (after cleaning):")
+        print(aircraft_df.head())
+
+        # Insert into aircraft table
+        aircraft_df.to_sql('aircraft', con=engine, if_exists='append', index=False)
+
+        print("Aircraft data loaded successfully.")
+
+        # Load and clean engine data
+        engine_df = pd.read_csv('data/FAA_Database/engine.csv', low_memory=False)
+        engine_df.fillna(value='', inplace=True)  # Fill NaN values with empty string
+        engine_df = engine_df.applymap(lambda x: clean_comma_values(x) if isinstance(x, str) else x)
+
+        print("Engine Data (after cleaning):")
+        print(engine_df.head())
+
+        # Insert into engine table
+        engine_df.to_sql('engine', con=engine, if_exists='append', index=False)
+
+        print("Engine data loaded successfully.")
+
+    except Exception as e:
+        print(f"Error during data loading: {e}")
+
+def drop_and_create_tables():
+    try:
+        with engine.connect() as connection:
+            # Drop and create aircraft_model table
+            connection.execute("DROP TABLE IF EXISTS aircraft_model;")
+            connection.execute("""
+                CREATE TABLE aircraft_model (
+                    mfr_mdl_code VARCHAR(10) PRIMARY KEY,
+                    aircraft_mfr VARCHAR(80),
+                    aircraft_model VARCHAR(80),
+                    type_aircraft VARCHAR(10),
+                    type_engine VARCHAR(10),
+                    aircraft_category VARCHAR(10),
+                    builder_certification VARCHAR(10),
+                    number_of_engines INT,
+                    number_of_seats INT,   -- Corrected column name
+                    ac_weight VARCHAR(20),
+                    speed VARCHAR(20),
+                    tc_data_sheet VARCHAR(80),
+                    tc_data_holder VARCHAR(80),
+                    `Unnamed: 13` VARCHAR(20)
+                );
+            """)
+
+            # Drop and create aircraft table
+            connection.execute("DROP TABLE IF EXISTS aircraft;")
+            connection.execute("""
+                CREATE TABLE aircraft (
+                    tail_number VARCHAR(10) PRIMARY KEY,
+                    serial_number VARCHAR(20),
+                    mfr_mdl_code VARCHAR(10),
+                    eng_mfr_mdl VARCHAR(10),
+                    year_mfr INT,
+                    type_registrant INT,
+                    owner_name VARCHAR(100),
+                    street_address_1 VARCHAR(100),
+                    street_address_2 VARCHAR(100),
+                    city VARCHAR(50),
+                    state VARCHAR(2),
+                    zip_code VARCHAR(10),
+                    region VARCHAR(10),
+                    county VARCHAR(50),
+                    country VARCHAR(50),
+                    last_action_date DATE,
+                    cert_issue_date DATE,
+                    cert_expiry_date DATE,
+                    unique_id VARCHAR(20),
+                    kit_mfr VARCHAR(50),
+                    kit_model VARCHAR(50),
+                    mode_s_code_hex VARCHAR(20),
+                    `Unnamed: 34` VARCHAR(20)
+                );
+            """)
+
+            # Drop and create engine table
+            connection.execute("DROP TABLE IF EXISTS engine;")
+            connection.execute("""
+                CREATE TABLE engine (
+                    eng_mfr_mdl VARCHAR(10) PRIMARY KEY,
+                    engine_mfr VARCHAR(80),
+                    engine_model VARCHAR(80),
+                    type_engine VARCHAR(10),
+                    engine_horsepower INT,
+                    engine_thrust INT
+                );
+            """)
+
+        print("Dropped all tables successfully.")
+        print("Recreated all tables successfully.")
+
+    except Exception as e:
+        print(f"Error during table creation: {e}")
+
+if __name__ == "__main__":
+    drop_and_create_tables()
+    load_data()
+

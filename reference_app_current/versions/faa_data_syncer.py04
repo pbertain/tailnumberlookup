@@ -1,0 +1,133 @@
+import os
+import hashlib
+import pymysql  # Assuming you chose pymysql, adjust to mysql.connector if needed
+import yaml
+from datetime import datetime
+
+# Version number for the script
+SCRIPT_VERSION = 4
+
+# Print the script version when the script starts
+print(f"Running faa_data_syncer.py version {SCRIPT_VERSION}")
+
+# Load DB password from environment
+FAA_DB_PASSWORD = os.getenv('FAA_DB_PASSWORD')
+
+# Load configuration from the correct YAML file
+def load_config():
+    config_file_path = os.path.join('config', 'faa_data_syncer.yaml')
+    with open(config_file_path, 'r') as file:
+        config = yaml.safe_load(file)
+    return config
+
+# Get data directory from the YAML config or environment variable
+def get_data_directory():
+    config = load_config()
+    return os.getenv('FAA_DATA_DIR', config.get('data_directory'))
+
+# Establish a connection to the MySQL database
+def connect_db():
+    return pymysql.connect(
+        host="localhost",
+        user="faa_user",  # Replace with your MySQL username
+        password=FAA_DB_PASSWORD,  # Using environment variable for password
+        database="faa_aircraft"
+    )
+
+# Helper function to calculate MD5 checksum of a file
+def calculate_md5(file_path):
+    hash_md5 = hashlib.md5()
+    with open(file_path, "rb") as file:
+        for chunk in iter(lambda: file.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
+# Function to check if a file has changed
+def has_file_changed(db_cursor, file_name, file_path):
+    # Get file creation/modification time
+    file_create_date = datetime.fromtimestamp(os.path.getmtime(file_path))
+    
+    # Calculate file MD5 checksum
+    file_md5sum = calculate_md5(file_path)
+    
+    # Check existing metadata in the database
+    db_cursor.execute("SELECT file_create_date, file_md5sum FROM file_metadata WHERE file_name = %s", (file_name,))
+    result = db_cursor.fetchone()
+
+    if result:
+        db_create_date, db_md5sum = result
+        if db_create_date == file_create_date and db_md5sum == file_md5sum:
+            return False  # No change
+        else:
+            # Update metadata in the database
+            db_cursor.execute("""
+                UPDATE file_metadata SET file_create_date = %s, file_md5sum = %s WHERE file_name = %s
+            """, (file_create_date, file_md5sum, file_name))
+    else:
+        # Insert new file metadata
+        db_cursor.execute("""
+            INSERT INTO file_metadata (file_name, file_create_date, file_md5sum) 
+            VALUES (%s, %s, %s)
+        """, (file_name, file_create_date, file_md5sum))
+    
+    db_cursor.connection.commit()
+    return True  # File has changed
+
+# Function to load data if the file has changed
+def load_data_if_changed(db_cursor, file_name, file_path, load_function):
+    if has_file_changed(db_cursor, file_name, file_path):
+        print(f"Loading data for {file_name}...")
+        load_function(db_cursor, file_path)
+    else:
+        print(f"No changes detected for {file_name}, skipping load.")
+
+# Example function to load aircraft data
+def load_aircraft_data(db_cursor, file_path):
+    with open(file_path, 'r') as file:
+        for line in file:
+            n_number = line[0:5].strip()
+            serial_number = line[6:36].strip()
+            aircraft_mfr_model_code = line[37:44].strip()
+            engine_mfr_model_code = line[45:50].strip()
+            year_mfr = line[51:55].strip()
+            type_registrant = line[56].strip()
+            registrant_name = line[58:108].strip()
+            street1 = line[109:142].strip()
+            street2 = line[143:176].strip()
+            city = line[177:195].strip()
+            state = line[196:198].strip()
+            zip_code = line[199:209].strip()
+
+            # Execute insert query
+            db_cursor.execute("""
+                INSERT INTO aircraft (n_number, serial_number, aircraft_mfr_model_code, engine_mfr_model_code, 
+                                      year_mfr, type_registrant, registrant_name, street1, street2, city, state, zip_code)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (n_number, serial_number, aircraft_mfr_model_code, engine_mfr_model_code, year_mfr, type_registrant, 
+                  registrant_name, street1, street2, city, state, zip_code))
+
+    db_cursor.connection.commit()
+
+# Main function to orchestrate data syncing
+def main():
+    # Load configuration and connect to the database
+    data_directory = get_data_directory()
+    db_connection = connect_db()
+    cursor = db_connection.cursor()
+
+    # Define file paths
+    master_file = os.path.join(data_directory, 'MASTER.txt')
+    acftref_file = os.path.join(data_directory, 'ACFTREF.txt')
+    engine_file = os.path.join(data_directory, 'ENGINE.txt')
+
+    # Load data for each file only if it has changed
+    load_data_if_changed(cursor, 'Aircraft Registration Master File', master_file, load_aircraft_data)
+    # Add similar functions for acftref_file and engine_file as needed
+
+    # Close the cursor and connection
+    cursor.close()
+    db_connection.close()
+
+if __name__ == "__main__":
+    main()
+

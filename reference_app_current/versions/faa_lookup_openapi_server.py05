@@ -1,0 +1,155 @@
+import os
+import pymysql
+import logging
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+# Version of the FastAPI app
+APP_VERSION = 5
+
+# Print the app version when the app starts
+print(f"Running faa-data-sync API version {APP_VERSION}")
+
+# Enable logging
+logging.basicConfig(level=logging.INFO)
+
+app = FastAPI()
+
+# Database connection details
+DB_HOST = 'localhost'
+DB_USER = 'faa_user'
+DB_PASSWORD = os.getenv('FAA_DB_PASSWORD')  # Retrieve password from environment variable
+DB_NAME = 'faa_aircraft'
+
+# Function to connect to the database
+def get_db_connection():
+    return pymysql.connect(
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME
+    )
+
+# Response models that match the MySQL table structure
+
+class AircraftResponseModel(BaseModel):
+    n_number: str
+    serial_number: str
+    aircraft_mfr_model_code: str
+    engine_mfr_model_code: str
+    year_mfr: int
+    type_registrant: str
+    registrant_name: str
+    street1: str
+    street2: str
+    city: str
+    state: str
+    zip_code: str
+    registrant_region: str
+    county_mail_code: str
+    country_mail_code: str
+    last_activity_date: str
+    certificate_issue_date: str
+    airworthiness_classification_code: str
+    approved_operation_codes: str
+    type_aircraft: str
+    type_engine: str
+    status_code: str
+    mode_s_code: str
+    fractional_ownership: str
+    airworthiness_date: str
+    unique_id: str
+    expiration_date: str
+    model_code: str
+    engine_code: str
+
+class AircraftModelResponseModel(BaseModel):
+    model_code: str
+    manufacturer_name: str
+    model_name: str
+    type_aircraft: str
+    type_engine: str
+    aircraft_category_code: str
+    builder_certification_code: str
+    number_of_engines: int
+    number_of_seats: int
+    aircraft_weight_category: str
+    aircraft_cruising_speed: int
+    tc_data_sheet: str
+    tc_data_holder: str
+
+class EngineResponseModel(BaseModel):
+    engine_code: str
+    engine_mfr_model_code: str
+    manufacturer_name: str
+    engine_model_name: str
+    type_engine: str
+    horsepower: int
+    pounds_of_thrust: int
+
+# Endpoint to retrieve aircraft by N-number
+@app.get("/aircraft/{n_number}", response_model=AircraftResponseModel)
+def get_aircraft(n_number: str):
+    connection = get_db_connection()
+    cursor = connection.cursor(pymysql.cursors.DictCursor)
+
+    logging.info(f"Searching for aircraft with N-number: {n_number}")
+    
+    cursor.execute("SELECT * FROM aircraft WHERE LOWER(n_number) = LOWER(%s)", (n_number,))
+    aircraft = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+
+    if aircraft is None:
+        logging.info(f"No aircraft found for N-number: {n_number}")
+        raise HTTPException(status_code=404, detail="Aircraft not found")
+
+    logging.info(f"Aircraft data: {aircraft}")
+
+    return aircraft
+
+# Endpoint to retrieve aircraft model by model code
+@app.get("/aircraft_model/{model_code}", response_model=AircraftModelResponseModel)
+def get_aircraft_model(model_code: str):
+    connection = get_db_connection()
+    cursor = connection.cursor(pymysql.cursors.DictCursor)
+
+    logging.info(f"Searching for aircraft model with model code: {model_code}")
+    
+    cursor.execute("SELECT * FROM aircraft_model WHERE LOWER(model_code) = LOWER(%s)", (model_code,))
+    model = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+
+    if model is None:
+        logging.info(f"No aircraft model found for model code: {model_code}")
+        raise HTTPException(status_code=404, detail="Aircraft model not found")
+
+    logging.info(f"Aircraft model data: {model}")
+
+    return model
+
+# Endpoint to retrieve engine by engine code
+@app.get("/engine/{engine_code}", response_model=EngineResponseModel)
+def get_engine(engine_code: str):
+    connection = get_db_connection()
+    cursor = connection.cursor(pymysql.cursors.DictCursor)
+
+    logging.info(f"Searching for engine with engine code: {engine_code}")
+    
+    cursor.execute("SELECT * FROM engine WHERE LOWER(engine_code) = LOWER(%s)", (engine_code,))
+    engine = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+
+    if engine is None:
+        logging.info(f"No engine found for engine code: {engine_code}")
+        raise HTTPException(status_code=404, detail="Engine not found")
+
+    logging.info(f"Engine data: {engine}")
+
+    return engine
+

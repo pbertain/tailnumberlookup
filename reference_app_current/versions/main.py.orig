@@ -1,0 +1,59 @@
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import create_engine, select, MetaData, Table
+from sqlalchemy.orm import sessionmaker
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+app = FastAPI()
+
+# Database connection setup
+DB_PASSWORD = os.getenv('FAA_DB_PASSWORD')
+DATABASE_URL = f"postgresql://postgres:{DB_PASSWORD}@localhost:5432/faa_aircraft"
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+metadata = MetaData(bind=engine)
+
+# Reflect the existing tables
+aircraft_table = Table('aircraft', metadata, autoload_with=engine)
+
+class AircraftDetails(BaseModel):
+    tail_number: str
+    owner_name: str
+    city: str
+    state: str
+    expiration_date: str
+
+@app.get("/aircraft/{tail_number}", response_model=AircraftDetails)
+async def get_aircraft(tail_number: str):
+    """Fetch aircraft details by tail number."""
+    with SessionLocal() as session:
+        stmt = select([
+            aircraft_table.c.tail_number,
+            aircraft_table.c.owner_name,
+            aircraft_table.c.city,
+            aircraft_table.c.state,
+            aircraft_table.c.expiration_date
+        ]).where(aircraft_table.c.tail_number == tail_number)
+        
+        result = session.execute(stmt).fetchone()
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="Aircraft not found")
+
+        return {
+            "tail_number": result.tail_number,
+            "owner_name": result.owner_name,
+            "city": result.city,
+            "state": result.state,
+            "expiration_date": result.expiration_date
+        }
+
+# Run the server using Uvicorn (you can remove this if using another method)
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=25081)
+

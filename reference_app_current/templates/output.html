@@ -1,0 +1,73 @@
+<!-- output.html - Version 3 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirPuff Lookup Results</title>
+    <link rel="stylesheet" href="https://www.airpuff.info/web/css/airpuff.css">
+</head>
+<body class="body_main">
+    <div class="header">
+        <img src="https://airpuff.info/web/icons/airpuff-logo.png" alt="AirPuff Logo" style="float:left; margin-right: 20px;">
+        <span class="header_yel">AirPuff Lookup Results</span>
+    </div>
+    <div class="basic" id="resultsContainer" style="clear: both;">
+        <p class="paragraph">Searching for tail number...</p>
+    </div>
+
+    <script>
+        // Get 'tailNumber' parameter from the URL
+        function getTailNumberFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('tailNumber');
+        }
+
+        // Display aircraft data or an error message
+        function displayData(data) {
+            const container = document.getElementById('resultsContainer');
+            container.innerHTML = '';  // Clear initial content
+
+            if (data) {
+                container.innerHTML = `
+                    <h2 class="header_yel">Aircraft Information</h2>
+                    <p class="paragraph">Tail Number: ${data.n_number}</p>
+                    <p class="paragraph">Model: ${data.model_name}</p>
+                    <p class="paragraph">Manufacturer: ${data.manufacturer_name}</p>
+                    <p class="paragraph">Year Manufactured: ${data.year_mfr}</p>
+                    <p class="paragraph">Owner: ${data.registrant_name}</p>
+                    <p class="paragraph">Location: ${data.city}, ${data.state}</p>
+                    <!-- Additional fields can be displayed here -->
+                `;
+            } else {
+                container.innerHTML = `<p class="paragraph">No aircraft data found for this tail number.</p>`;
+            }
+        }
+
+        // Fetch aircraft data
+        async function fetchAircraftData() {
+            const tailNumber = getTailNumberFromURL();
+            if (tailNumber) {
+                try {
+                    const response = await fetch(`/aircraft/${encodeURIComponent(tailNumber)}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        displayData(data);
+                    } else {
+                        displayData(null);  // No data found
+                    }
+                } catch (error) {
+                    console.error('Error fetching data:', error);
+                    displayData(null);  // Show error message
+                }
+            } else {
+                document.getElementById('resultsContainer').innerHTML = `<p class="paragraph">Invalid tail number.</p>`;
+            }
+        }
+
+        // Start the fetch process when the page loads
+        document.addEventListener('DOMContentLoaded', fetchAircraftData);
+    </script>
+</body>
+</html>
+

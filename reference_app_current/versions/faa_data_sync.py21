@@ -1,0 +1,130 @@
+import os
+import pandas as pd
+from sqlalchemy import create_engine
+from datetime import datetime
+import psycopg2
+
+# Database connection setup using environment variables
+db_password = os.getenv("FAA_DB_PASSWORD")
+if not db_password:
+    raise ValueError("Database password not set in environment variable FAA_DB_PASSWORD")
+
+engine = create_engine(f'postgresql://postgres:{db_password}@localhost/faa_aircraft')
+
+def clean_comma_values(value):
+    """Replaces comma values with None."""
+    # Strip whitespace and check if it's just a comma or empty
+    if isinstance(value, str):
+        value = value.strip()
+    if value == ',' or value == '':
+        return None
+    return value
+
+def truncate_string(value, length):
+    """Truncates a string to the specified length."""
+    if isinstance(value, str):
+        return value[:length]
+    return value
+
+def clean_number_of_engines(value):
+    """Ensures the number of engines is an integer."""
+    if value == ',' or pd.isna(value):
+        return 0
+    try:
+        return int(value)
+    except ValueError:
+        return 0
+
+def load_data():
+    print("Starting the data load process...")
+
+    # Paths to the FAA data files
+    aircraft_model_path = '/var/bertain-cdn/faa-aircraft-lookup/data/FAA_Database/ACFTREF.txt'
+    aircraft_data_path = '/var/bertain-cdn/faa-aircraft-lookup/data/FAA_Database/MASTER.txt'
+    engine_data_path = '/var/bertain-cdn/faa-aircraft-lookup/data/FAA_Database/ENGINE.txt'
+
+    # Load Aircraft Model Data
+    try:
+        print(f"Loading aircraft model data from {aircraft_model_path}")
+        aircraft_model_df = pd.read_fwf(aircraft_model_path, widths=[7, 50, 50, 2, 2, 2, 2, 2], 
+                                        names=['mfr_mdl_code', 'aircraft_mfr', 'aircraft_model', 
+                                               'type_aircraft', 'type_engine', 'aircraft_category', 
+                                               'builder_certification', 'number_of_engines'])
+
+        # Apply cleaning functions
+        aircraft_model_df = aircraft_model_df.applymap(clean_comma_values)
+        aircraft_model_df['aircraft_mfr'] = aircraft_model_df['aircraft_mfr'].apply(lambda x: truncate_string(x, 50))
+        aircraft_model_df['aircraft_model'] = aircraft_model_df['aircraft_model'].apply(lambda x: truncate_string(x, 50))
+        aircraft_model_df['number_of_engines'] = aircraft_model_df['number_of_engines'].apply(clean_number_of_engines)
+
+        print("Aircraft Model Data (after cleaning):")
+        print(aircraft_model_df.head())
+
+        # Insert Aircraft Model Data into the database
+        aircraft_model_df.to_sql('aircraft_model', con=engine, if_exists='append', index=False)
+        print("Aircraft Model Data inserted successfully.")
+    except Exception as e:
+        print(f"Error during Aircraft Model data insertion: {e}")
+
+    # Load Aircraft Data
+    try:
+        print(f"Loading aircraft data from {aircraft_data_path}")
+        aircraft_df = pd.read_csv(aircraft_data_path, low_memory=False)
+        print("Aircraft Data:")
+        print(aircraft_df.head())
+
+        # Insert Aircraft Data into the database
+        aircraft_df.to_sql('aircraft', con=engine, if_exists='append', index=False)
+        print("Aircraft Data inserted successfully.")
+    except Exception as e:
+        print(f"Error during Aircraft data insertion: {e}")
+
+    # Load Engine Data
+    try:
+        print(f"Loading engine data from {engine_data_path}")
+        engine_df = pd.read_fwf(engine_data_path, widths=[5, 10, 13, 2, 4, 6], 
+                                names=['eng_mfr_mdl', 'engine_mfr', 'engine_model', 
+                                       'type_engine', 'engine_horsepower', 'engine_thrust'])
+
+        # Apply cleaning functions
+        engine_df = engine_df.applymap(clean_comma_values)
+        engine_df['engine_mfr'] = engine_df['engine_mfr'].apply(lambda x: truncate_string(x, 50))
+        engine_df['engine_model'] = engine_df['engine_model'].apply(lambda x: truncate_string(x, 50))
+
+        print("Engine Data:")
+        print(engine_df.head())
+
+        # Insert Engine Data into the database
+        engine_df.to_sql('engine', con=engine, if_exists='append', index=False)
+        print("Engine Data inserted successfully.")
+    except Exception as e:
+        print(f"Error during Engine data insertion: {e}")
+
+# Test functions
+def test_clean_comma_values():
+    assert clean_comma_values(',') is None
+    assert clean_comma_values('value') == 'value'
+    assert clean_comma_values(' ,') is None
+    assert clean_comma_values(' ') is None
+    assert clean_comma_values(None) is None
+    print("test_clean_comma_values passed.")
+
+def test_truncate_string():
+    assert truncate_string('Hello World', 5) == 'Hello'
+    assert truncate_string('Python', 10) == 'Python'
+    assert truncate_string(12345, 2) == 12345
+    print("test_truncate_string passed.")
+
+def test_clean_number_of_engines():
+    assert clean_number_of_engines(',') == 0
+    assert clean_number_of_engines('2') == 2
+    assert clean_number_of_engines('bad') == 0
+    assert clean_number_of_engines(3) == 3
+    print("test_clean_number_of_engines passed.")
+
+if __name__ == "__main__":
+    test_clean_comma_values()
+    test_truncate_string()
+    test_clean_number_of_engines()
+    load_data()
+

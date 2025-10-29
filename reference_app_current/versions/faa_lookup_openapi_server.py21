@@ -1,0 +1,207 @@
+# FAA Aircraft Lookup API
+# Version: 21
+
+# Run this API server with:
+# `uvicorn faa_lookup_openapi_server:app --reload --port 49080`
+# Or: `uvicorn faa_lookup_openapi_server:app --reload --host 0.0.0.0 --port 49080`
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+from pydantic import BaseModel
+from typing import Optional
+import pymysql
+import time
+import logging
+import os
+
+# Define version
+__app__ = "FAA Aircraft Lookup API"
+__version__ = 21  # Updated version to 21
+
+app = FastAPI(
+    title=__app__,
+    description="API to lookup FAA registered aircraft information.",
+    version=str(__version__)
+)
+
+# Set up database configuration and password retrieval
+DB_CONFIG = {
+    "host": "localhost",
+    "user": "faa_user",
+    "password": os.getenv("FAA_DB_PASSWORD"),
+    "database": "faa_aircraft"
+}
+
+# Log setup
+access_logger = logging.getLogger("faa_lookup_access")
+error_logger = logging.getLogger("faa_lookup_error")
+
+access_handler = logging.FileHandler("/var/log/fastapi/access.log")
+error_handler = logging.FileHandler("/var/log/fastapi/error.log")
+access_handler.setLevel(logging.INFO)
+error_handler.setLevel(logging.ERROR)
+
+access_logger.addHandler(access_handler)
+error_logger.addHandler(error_handler)
+
+# Aircraft response model
+class AircraftData(BaseModel):
+    n_number: str
+    serial_number: Optional[str] = None
+    aircraft_manufacturer_name: Optional[str] = None
+    aircraft_model_name: Optional[str] = None
+    engine_manufacturer: Optional[str] = None
+    engine_model: Optional[str] = None
+    engine_horsepower: Optional[int] = None
+    registrant_name: Optional[str] = None
+    street1: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+    country_mail_code: Optional[str] = None
+    last_activity_date: Optional[str] = None
+    certificate_issue_date: Optional[str] = None
+    airworthiness_classification_code: Optional[str] = None
+    approved_operation_codes: Optional[str] = None
+    airworthiness_date: Optional[str] = None
+    expiration_date: Optional[str] = None
+    unique_id: Optional[str] = None
+
+def get_db_connection():
+    return pymysql.connect(
+        host=DB_CONFIG["host"],
+        user=DB_CONFIG["user"],
+        password=DB_CONFIG["password"],
+        database=DB_CONFIG["database"]
+    )
+
+@app.get("/", response_class=HTMLResponse)
+async def read_root(request: Request, n_number: Optional[str] = None):
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>FAA Aircraft Lookup</title>
+        <link rel="stylesheet" href="https://www.airpuff.info/web/css/airpuff.css">
+    </head>
+    <body class="body_main">
+        <header class="basic">
+            <a href="https://www.airpuff.info/">
+                <img src="https://airpuff.info/web/icons/airpuff-logo.png" alt="AirPuff Logo">
+            </a>
+            <h1 class="header-title">FAA Aircraft Lookup API</h1>
+        </header>
+        <main>
+            <div class="header">Welcome to the AirPuff Aircraft Tail Number Lookup</div>
+            <div class="paragraph">
+                <p>Search for aircraft information by entering an N-Number below.</p>
+                
+                <!-- Search Form -->
+                <form method="get" action="/">
+                    <label for="n_number" class="large-label">Enter N-Number:</label>
+                    <input type="text" id="n_number" name="n_number" required>
+                    <button type="submit">Search</button>
+                </form>
+                
+                <!-- Button for API Documentation -->
+                <p><a href="/docs" class="button-link">Access the API Documentation</a></p>
+                
+                <!-- Results Section -->
+                <div id="result">{result}</div>
+            </div>
+        </main>
+        <footer class="footer">
+            <p>Powered by AirPuff.</p>
+        </footer>
+    </body>
+    </html>
+    """
+
+    result = ""
+    if n_number:
+        connection = get_db_connection()
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
+        query = """
+            SELECT 
+                n_number, serial_number, aircraft_model.manufacturer_name AS aircraft_manufacturer_name,
+                aircraft_model.model_name AS aircraft_model_name, engine.manufacturer_name AS engine_manufacturer,
+                engine.engine_model_name AS engine_model, engine.horsepower AS engine_horsepower,
+                registrant_name, street1, city, state, zip_code, country_mail_code, last_activity_date,
+                certificate_issue_date, airworthiness_classification_code, approved_operation_codes,
+                airworthiness_date, expiration_date, unique_id
+            FROM aircraft
+            LEFT JOIN aircraft_model ON aircraft.mfr_model_code = aircraft_model.model_code
+            LEFT JOIN engine ON aircraft.engine_mfr_model_code = engine.engine_code
+            WHERE aircraft.n_number = %s
+        """
+        cursor.execute(query, (n_number,))
+        row = cursor.fetchone()
+        cursor.close()
+        connection.close()
+
+        result = format_as_vertical_table(row) if row else "<p>No data found for this N-Number.</p>"
+
+    return HTMLResponse(content=html_content.format(result=result))
+
+@app.get("/aircraft/{n_number}", response_model=AircraftData)
+async def get_aircraft_by_n_number(n_number: str):
+    """JSON API endpoint to retrieve aircraft data by N-number"""
+    connection = get_db_connection()
+    cursor = connection.cursor(pymysql.cursors.DictCursor)
+    query = """
+        SELECT 
+            n_number, serial_number, aircraft_model.manufacturer_name AS aircraft_manufacturer_name,
+            aircraft_model.model_name AS aircraft_model_name, engine.manufacturer_name AS engine_manufacturer,
+            engine.engine_model_name AS engine_model, engine.horsepower AS engine_horsepower,
+            registrant_name, street1, city, state, zip_code, country_mail_code, last_activity_date,
+            certificate_issue_date, airworthiness_classification_code, approved_operation_codes,
+            airworthiness_date, expiration_date, unique_id
+        FROM aircraft
+        LEFT JOIN aircraft_model ON aircraft.mfr_model_code = aircraft_model.model_code
+        LEFT JOIN engine ON aircraft.engine_mfr_model_code = engine.engine_code
+        WHERE aircraft.n_number = %s
+    """
+    cursor.execute(query, (n_number,))
+    row = cursor.fetchone()
+    cursor.close()
+    connection.close()
+
+    if row:
+        return row
+    else:
+        raise HTTPException(status_code=404, detail="Aircraft data not found")
+
+def format_as_vertical_table(data):
+    """Formats data into an HTML vertical table."""
+    fields_to_show = {
+        "n_number": "N-Number",
+        "serial_number": "Serial Number",
+        "aircraft_manufacturer_name": "Manufacturer Name",
+        "aircraft_model_name": "Model Name",
+        "engine_manufacturer": "Engine Manufacturer",
+        "engine_model": "Engine Model",
+        "engine_horsepower": "Horsepower",
+        "registrant_name": "Registrant Name",
+        "street1": "Street",
+        "city": "City",
+        "state": "State",
+        "zip_code": "Zip Code",
+        "country_mail_code": "Country Code",
+        "last_activity_date": "Last Activity Date",
+        "certificate_issue_date": "Certificate Issue Date",
+        "airworthiness_classification_code": "Airworthiness Classification",
+        "approved_operation_codes": "Approved Operations",
+        "airworthiness_date": "Airworthiness Date",
+        "expiration_date": "Expiration Date",
+        "unique_id": "Unique ID"
+    }
+
+    table = "<table class='styled-table'><tbody>"
+    for key, label in fields_to_show.items():
+        value = data.get(key, "N/A")
+        table += f"<tr><th>{label}</th><td>{value}</td></tr>"
+    table += "</tbody></table>"
+    return table
+

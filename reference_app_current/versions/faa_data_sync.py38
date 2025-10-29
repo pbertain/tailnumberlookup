@@ -1,0 +1,178 @@
+import os
+import pandas as pd
+from sqlalchemy import create_engine, text
+from datetime import datetime
+import numpy as np
+
+# Database connection setup
+DB_PASSWORD = os.getenv('FAA_DB_PASSWORD')
+print(f"The password is {DB_PASSWORD}")
+DATABASE_URL = f"postgresql://postgres:{DB_PASSWORD}@localhost:5432/faa_aircraft"
+engine = create_engine(DATABASE_URL)
+
+# Define the data directory
+DATA_DIR = "/var/bertain-cdn/faa-aircraft-lookup/data/FAA_Database"
+
+
+def clean_comma_values(value):
+    """Clean values that are commas or invalid."""
+    if value is None or (isinstance(value, str) and (value.strip() == ',' or value.strip() == '')):
+        return None
+    return value.strip() if isinstance(value, str) else value
+
+
+def truncate_string(value, length):
+    """Truncate a string to the specified length."""
+    if isinstance(value, str):
+        return value[:length]
+    return value
+
+
+def clean_number_of_engines(value):
+    """Ensure the number of engines is an integer."""
+    if pd.isna(value) or value == ',':
+        return 0
+    try:
+        return int(value)
+    except ValueError:
+        return 0
+
+
+def drop_and_create_tables():
+    """Drop existing tables and recreate them."""
+    with engine.connect() as connection:
+        connection.execute(text("DROP TABLE IF EXISTS aircraft CASCADE;"))
+        connection.execute(text("DROP TABLE IF EXISTS aircraft_model CASCADE;"))
+        connection.execute(text("DROP TABLE IF EXISTS engine CASCADE;"))
+        print("Dropped all tables successfully with CASCADE.")
+
+        # Recreate the tables
+        connection.execute(text("""
+            CREATE TABLE aircraft (
+                tail_number VARCHAR(10) PRIMARY KEY,
+                serial_number VARCHAR(30),
+                mfr_mdl_code VARCHAR(10),
+                eng_mfr_mdl VARCHAR(10),
+                year_mfr INT,
+                owner_name VARCHAR(100),
+                street VARCHAR(100),
+                street2 VARCHAR(100),
+                city VARCHAR(50),
+                state VARCHAR(2),
+                zip_code VARCHAR(10),
+                region VARCHAR(2),
+                county VARCHAR(10),
+                country VARCHAR(3),
+                cert_issue_date DATE,
+                certification VARCHAR(10),
+                type_aircraft VARCHAR(10),
+                type_engine VARCHAR(10),
+                air_worth_date DATE,
+                expiration_date DATE
+            );
+        """))
+
+        connection.execute(text("""
+            CREATE TABLE aircraft_model (
+                mfr_mdl_code VARCHAR(10) PRIMARY KEY,
+                aircraft_mfr VARCHAR(50),
+                aircraft_model VARCHAR(50),
+                type_aircraft VARCHAR(2),
+                type_engine VARCHAR(2),
+                aircraft_category VARCHAR(2),
+                builder_certification VARCHAR(2),
+                number_of_engines INT
+            );
+        """))
+
+        connection.execute(text("""
+            CREATE TABLE engine (
+                eng_mfr_mdl VARCHAR(10) PRIMARY KEY,
+                engine_mfr VARCHAR(50),
+                engine_model VARCHAR(50),
+                type_engine VARCHAR(2),
+                engine_horsepower INT,
+                engine_thrust INT
+            );
+        """))
+        print("Recreated all tables successfully.")
+
+
+def load_data():
+    """Load aircraft, aircraft_model, and engine data into the database."""
+    print("Starting the data load process...")
+
+    # Load Aircraft Model Data
+    aircraft_model_path = os.path.join(DATA_DIR, 'ACFTREF.txt')
+    aircraft_model_df = pd.read_fwf(
+        aircraft_model_path,
+        colspecs=[(0, 7), (9, 38), (40, 59), (61, 62), (63, 64), (66, 67), (68, 69), (70, 72)],
+        names=['mfr_mdl_code', 'aircraft_mfr', 'aircraft_model', 'type_aircraft', 'type_engine',
+               'aircraft_category', 'builder_certification', 'number_of_engines']
+    )
+
+    # Clean and truncate values
+    aircraft_model_df = aircraft_model_df.applymap(lambda x: clean_comma_values(x))
+    aircraft_model_df['number_of_engines'] = aircraft_model_df['number_of_engines'].apply(clean_number_of_engines)
+    for col in ['aircraft_mfr', 'aircraft_model']:
+        aircraft_model_df[col] = aircraft_model_df[col].apply(lambda x: truncate_string(x, 50))
+
+    print("Aircraft Model Data (after cleaning):")
+    print(aircraft_model_df.head())
+
+    try:
+        # Insert and ignore duplicates
+        aircraft_model_df.to_sql('aircraft_model', con=engine, if_exists='append', index=False, method='multi')
+        print("Aircraft Model Data inserted successfully.")
+    except Exception as e:
+        print(f"Error during Aircraft Model data insertion: {e}")
+
+    # Load Aircraft Data with specified columns to match the DB schema
+    aircraft_data_path = os.path.join(DATA_DIR, 'MASTER.txt')
+    aircraft_columns = [
+        "tail_number", "serial_number", "mfr_mdl_code", "eng_mfr_mdl", "year_mfr", "owner_name",
+        "street", "street2", "city", "state", "zip_code", "region", "county", "country", 
+        "cert_issue_date", "certification", "type_aircraft", "type_engine", "air_worth_date", "expiration_date"
+    ]
+    aircraft_df = pd.read_csv(
+        aircraft_data_path,
+        names=aircraft_columns,
+        low_memory=False
+    )
+    print("Aircraft Data:")
+    print(aircraft_df.head())
+
+    try:
+        aircraft_df.to_sql('aircraft', con=engine, if_exists='append', index=False, method='multi')
+        print("Aircraft Data inserted successfully.")
+    except Exception as e:
+        print(f"Error during Aircraft data insertion: {e}")
+
+    # Load Engine Data with specified columns
+    engine_data_path = os.path.join(DATA_DIR, 'ENGINE.txt')
+    engine_df = pd.read_fwf(
+        engine_data_path,
+        colspecs=[(0, 5), (7, 16), (18, 30), (32, 33), (35, 39), (41, 46)],
+        names=['eng_mfr_mdl', 'engine_mfr', 'engine_model', 'type_engine', 'engine_horsepower', 'engine_thrust']
+    )
+
+    engine_df = engine_df.applymap(lambda x: clean_comma_values(x))
+    print("Engine Data:")
+    print(engine_df.head())
+
+    try:
+        engine_df.to_sql('engine', con=engine, if_exists='append', index=False, method='multi')
+        print("Engine Data inserted successfully.")
+    except Exception as e:
+        print(f"Error during Engine data insertion: {e}")
+
+
+def main():
+    """Main function to run tests and load data."""
+    drop_and_create_tables()
+    load_data()
+
+
+if __name__ == "__main__":
+    main()
+

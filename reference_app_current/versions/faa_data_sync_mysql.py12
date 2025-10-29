@@ -1,0 +1,75 @@
+import os
+import pandas as pd
+import pymysql
+from sqlalchemy import create_engine
+import numpy as np
+
+# Fetch the MySQL password from the environment variable
+MYSQL_PASSWORD = os.getenv('FAA_DB_PASSWORD')
+
+# Database connection details (hardcoded except for the password)
+db_config = {
+    'user': 'faa_user',
+    'password': MYSQL_PASSWORD,
+    'host': 'localhost',
+    'port': '3306',
+    'database': 'faa_aircraft',
+}
+
+# Create a SQLAlchemy engine for MySQL
+connection_string = f"mysql+pymysql://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['database']}"
+engine = create_engine(connection_string)
+
+def clean_comma_values(value):
+    """Clean the values by removing commas and handling None."""
+    if pd.isna(value) or value == '':
+        return None
+    return value.strip()
+
+def load_data():
+    try:
+        # Load and clean aircraft model data
+        aircraft_model_df = pd.read_csv('/var/bertain-cdn/faa-aircraft-lookup/data/FAA_Database/ACFTREF.txt')
+        aircraft_model_df = aircraft_model_df.applymap(lambda x: clean_comma_values(x) if isinstance(x, str) else x)
+        aircraft_model_df.fillna(value=None, inplace=True)
+        print("Aircraft Model Data (after cleaning):")
+        print(aircraft_model_df.head())
+
+        # Insert aircraft model data into MySQL
+        aircraft_model_df.to_sql('aircraft_model', engine, if_exists='append', index=False)
+        print("Aircraft model data loaded successfully.")
+
+        # Load and clean aircraft data
+        aircraft_df = pd.read_csv('/var/bertain-cdn/faa-aircraft-lookup/data/FAA_Database/MASTER.txt')
+        aircraft_df = aircraft_df.applymap(lambda x: clean_comma_values(x) if isinstance(x, str) else x)
+        aircraft_df.fillna(value=None, inplace=True)
+        print("Aircraft Data (after cleaning):")
+        print(aircraft_df.head())
+
+        # Insert aircraft data into MySQL
+        aircraft_df.to_sql('aircraft', engine, if_exists='append', index=False)
+        print("Aircraft data loaded successfully.")
+
+    except Exception as e:
+        print(f"Error during data loading: {e}")
+
+def drop_and_create_tables():
+    """Drop existing tables and recreate them."""
+    with engine.connect() as connection:
+        try:
+            connection.execute("DROP TABLE IF EXISTS aircraft CASCADE;")
+            connection.execute("DROP TABLE IF EXISTS aircraft_model CASCADE;")
+            connection.execute("CREATE TABLE aircraft_model (mfr_mdl_code VARCHAR(50), aircraft_mfr VARCHAR(255), aircraft_model VARCHAR(255), type_aircraft VARCHAR(10), type_engine VARCHAR(10), aircraft_category VARCHAR(10), builder_certification VARCHAR(10), number_of_engines INT, PRIMARY KEY (mfr_mdl_code));")
+            connection.execute("CREATE TABLE aircraft (tail_number VARCHAR(50), serial_number VARCHAR(50), mfr_mdl_code VARCHAR(50), eng_mfr_mdl VARCHAR(50), year_mfr INT, owner_name VARCHAR(255), street VARCHAR(255), city VARCHAR(255), state VARCHAR(10), zip_code VARCHAR(15), country VARCHAR(10), cert_issue_date VARCHAR(50), air_worth_date VARCHAR(50), expiration_date VARCHAR(50), PRIMARY KEY (tail_number));")
+            print("Dropped all tables successfully.")
+            print("Recreated all tables successfully.")
+        except Exception as e:
+            print(f"Error during table creation: {e}")
+
+def main():
+    drop_and_create_tables()
+    load_data()
+
+if __name__ == "__main__":
+    main()
+

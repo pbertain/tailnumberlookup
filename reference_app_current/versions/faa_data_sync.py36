@@ -1,0 +1,183 @@
+import os
+import pandas as pd
+from sqlalchemy import create_engine
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Database configuration from environment variables
+DB_PASSWORD = os.getenv('FAA_DB_PASSWORD')
+DATABASE_URL = f"postgresql://postgres:{DB_PASSWORD}@localhost:5432/faa_aircraft"
+
+# Create SQLAlchemy engine
+engine = create_engine(DATABASE_URL)
+
+# Define data directory
+DATA_DIR = "/var/bertain-cdn/faa-aircraft-lookup/data/FAA_Database"
+
+# Define fixed-width column specs based on FAA data spec PDF
+ACFTREF_COLSPECS = [
+    (0, 7), (9, 38), (40, 59), (61, 62), (63, 64),
+    (66, 67), (68, 69), (70, 72)
+]
+ACFTREF_COLUMNS = [
+    "mfr_mdl_code", "aircraft_mfr", "aircraft_model",
+    "type_aircraft", "type_engine", "aircraft_category",
+    "builder_certification", "number_of_engines"
+]
+
+MASTER_COLUMNS = [
+    "tail_number", "serial_number", "mfr_mdl_code", "eng_mfr_mdl", "year_mfr",
+    "owner_name", "street", "street2", "city", "state", "zip_code", "region",
+    "county", "country", "cert_issue_date", "certification", "type_aircraft", 
+    "type_engine", "air_worth_date", "expiration_date"
+]
+
+ENGINE_COLSPECS = [
+    (0, 5), (7, 16), (18, 30), (32, 33), (35, 39), (41, 46)
+]
+ENGINE_COLUMNS = [
+    "eng_mfr_mdl", "engine_mfr", "engine_model", 
+    "type_engine", "engine_horsepower", "engine_thrust"
+]
+
+# Function to clean fields with commas or invalid values
+def clean_comma_values(value):
+    """Cleans fields by removing commas and handling empty values."""
+    if isinstance(value, str):
+        return value.replace(',', '').strip()
+    return value
+
+def clean_number_of_engines(value):
+    """Ensures number_of_engines is an integer."""
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return 0
+
+# Function to load aircraft model data
+def load_aircraft_model_data():
+    """Loads and cleans aircraft model data from ACFTREF.txt."""
+    file_path = os.path.join(DATA_DIR, 'ACFTREF.txt')
+    
+    # Load fixed-width file
+    df = pd.read_fwf(file_path, colspecs=ACFTREF_COLSPECS, names=ACFTREF_COLUMNS)
+
+    # Clean data
+    df = df.applymap(clean_comma_values)
+    df['number_of_engines'] = df['number_of_engines'].apply(clean_number_of_engines)
+
+    # Insert into the database
+    try:
+        df.to_sql('aircraft_model', con=engine, if_exists='append', index=False)
+        print("Aircraft Model Data inserted successfully.")
+    except Exception as e:
+        print(f"Error during Aircraft Model data insertion: {e}")
+
+# Function to load aircraft data
+def load_aircraft_data():
+    """Loads and cleans aircraft data from MASTER.txt."""
+    file_path = os.path.join(DATA_DIR, 'MASTER.txt')
+    
+    # Load CSV file
+    df = pd.read_csv(file_path, names=MASTER_COLUMNS, low_memory=False)
+    
+    # Clean data
+    df = df.applymap(clean_comma_values)
+
+    # Insert into the database
+    try:
+        df.to_sql('aircraft', con=engine, if_exists='append', index=False)
+        print("Aircraft Data inserted successfully.")
+    except Exception as e:
+        print(f"Error during Aircraft data insertion: {e}")
+
+# Function to load engine data
+def load_engine_data():
+    """Loads and cleans engine data from ENGINE.txt."""
+    file_path = os.path.join(DATA_DIR, 'ENGINE.txt')
+
+    # Load fixed-width file
+    df = pd.read_fwf(file_path, colspecs=ENGINE_COLSPECS, names=ENGINE_COLUMNS)
+
+    # Clean data
+    df = df.applymap(clean_comma_values)
+
+    # Insert into the database
+    try:
+        df.to_sql('engine', con=engine, if_exists='append', index=False)
+        print("Engine Data inserted successfully.")
+    except Exception as e:
+        print(f"Error during Engine data insertion: {e}")
+
+# Function to recreate all tables
+def drop_and_create_tables():
+    """Drops and recreates all tables in the database."""
+    with engine.connect() as connection:
+        connection.execute("DROP TABLE IF EXISTS aircraft CASCADE;")
+        connection.execute("DROP TABLE IF EXISTS aircraft_model CASCADE;")
+        connection.execute("DROP TABLE IF EXISTS engine CASCADE;")
+        
+        # Recreate the tables
+        connection.execute("""
+            CREATE TABLE aircraft_model (
+                mfr_mdl_code VARCHAR(15) PRIMARY KEY,
+                aircraft_mfr VARCHAR(55),
+                aircraft_model VARCHAR(55),
+                type_aircraft VARCHAR(7),
+                type_engine VARCHAR(7),
+                aircraft_category VARCHAR(7),
+                builder_certification VARCHAR(7),
+                number_of_engines INTEGER
+            );
+        """)
+        
+        connection.execute("""
+            CREATE TABLE aircraft (
+                tail_number VARCHAR(12) PRIMARY KEY,
+                serial_number VARCHAR(35),
+                mfr_mdl_code VARCHAR(15),
+                eng_mfr_mdl VARCHAR(15),
+                year_mfr INT,
+                owner_name VARCHAR(105),
+                street VARCHAR(105),
+                street2 VARCHAR(105),
+                city VARCHAR(55),
+                state VARCHAR(10),
+                zip_code VARCHAR(15),
+                region VARCHAR(10),
+                county VARCHAR(15),
+                country VARCHAR(5),
+                cert_issue_date DATE,
+                certification VARCHAR(15),
+                type_aircraft VARCHAR(15),
+                type_engine VARCHAR(15),
+                air_worth_date DATE,
+                expiration_date DATE
+            );
+        """)
+
+        connection.execute("""
+            CREATE TABLE engine (
+                eng_mfr_mdl VARCHAR(15) PRIMARY KEY,
+                engine_mfr VARCHAR(55),
+                engine_model VARCHAR(55),
+                type_engine VARCHAR(7),
+                engine_horsepower INT,
+                engine_thrust INT
+            );
+        """)
+        print("Dropped and recreated all tables successfully.")
+
+# Main function to orchestrate data loading
+def main():
+    """Main function to orchestrate data loading."""
+    drop_and_create_tables()
+    load_aircraft_model_data()
+    load_aircraft_data()
+    load_engine_data()
+
+if __name__ == "__main__":
+    main()
+

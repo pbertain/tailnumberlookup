@@ -1,0 +1,54 @@
+<!-- index.html - Version 6 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAA Aircraft Lookup</title>
+    <link rel="stylesheet" href="https://www.airpuff.info/web/css/airpuff.css">
+</head>
+<body class="body_main">
+    <header class="basic" style="display: flex; align-items: center; padding: 20px;">
+        <img src="https://airpuff.info/web/icons/airpuff-logo.png" alt="AirPuff Logo" style="width: 100px; margin-right: 20px;">
+        <h1 class="header">FAA Aircraft Lookup</h1>
+    </header>
+    <main style="text-align: center;">
+        <form id="lookupForm" class="basic">
+            <label for="n_number">Enter Tail Number (N-number):</label>
+            <input type="text" id="n_number" name="n_number" required>
+            <button type="button" onclick="fetchAircraftData()">Search</button>
+        </form>
+        <div id="result"></div>
+    </main>
+    <footer class="footer">
+        <p>Powered by AirPuff.</p>
+    </footer>
+
+    <script>
+        async function fetchAircraftData() {
+            const nNumber = document.getElementById("n_number").value;
+            if (!nNumber) return;
+
+            const response = await fetch(`/aircraft/${nNumber}`);
+            const resultDiv = document.getElementById("result");
+
+            if (response.ok) {
+                const data = await response.json();
+                resultDiv.innerHTML = formatAsVerticalTable(data);
+            } else {
+                resultDiv.innerHTML = "<p>Aircraft not found</p>";
+            }
+        }
+
+        function formatAsVerticalTable(data) {
+            let table = `<table class="styled-table"><tbody>`;
+            for (const key in data) {
+                table += `<tr><th>${key}</th><td>${data[key] || ""}</td></tr>`;
+            }
+            table += `</tbody></table>`;
+            return table;
+        }
+    </script>
+</body>
+</html>
+

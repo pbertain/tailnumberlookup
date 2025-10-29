@@ -1,0 +1,136 @@
+import os
+import pandas as pd
+import mysql.connector
+from mysql.connector import Error
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# MySQL database connection
+def create_connection():
+    try:
+        connection = mysql.connector.connect(
+            host='localhost',
+            database='faa_aircraft',
+            user='root',
+            password=os.getenv('FAA_DB_PASSWORD')
+        )
+        if connection.is_connected():
+            print("Connected to MySQL database")
+            return connection
+    except Error as e:
+        print(f"Error connecting to MySQL: {e}")
+        return None
+
+# Clean functions for data
+def clean_comma_values(value):
+    """Clean values that are just commas or invalid."""
+    if value == ',' or value == '':
+        return None
+    return value
+
+def truncate_string(value, max_length):
+    """Truncate string fields to the specified max_length."""
+    if isinstance(value, str):
+        return value[:max_length]
+    return value
+
+def clean_number_of_engines(value):
+    """Ensure the number of engines is an integer."""
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return 0
+
+# Drop and recreate tables
+def drop_and_create_tables(connection):
+    cursor = connection.cursor()
+    try:
+        cursor.execute("DROP TABLE IF EXISTS aircraft;")
+        cursor.execute("DROP TABLE IF EXISTS aircraft_model;")
+        cursor.execute("DROP TABLE IF EXISTS engine;")
+        print("Dropped all tables successfully.")
+
+        # Recreate tables
+        with open('setup_faa_aircraft_schema_mysql.sql', 'r') as schema_file:
+            schema_sql = schema_file.read()
+        cursor.execute(schema_sql, multi=True)
+        print("Recreated all tables successfully.")
+    except Error as e:
+        print(f"Error during table creation: {e}")
+    finally:
+        cursor.close()
+
+# Load data from CSV files and insert into MySQL
+def load_data(connection):
+    print("Starting the data load process...")
+    
+    # Paths to the FAA data files
+    data_dir = '/var/bertain-cdn/faa-aircraft-lookup/data/FAA_Database'
+    aircraft_model_path = f'{data_dir}/ACFTREF.txt'
+    aircraft_data_path = f'{data_dir}/MASTER.txt'
+    engine_data_path = f'{data_dir}/ENGINE.txt'
+
+    cursor = connection.cursor()
+
+    # Load Aircraft Model Data
+    try:
+        print(f"Loading aircraft model data from {aircraft_model_path}")
+        aircraft_model_df = pd.read_csv(aircraft_model_path)
+        aircraft_model_df = aircraft_model_df.applymap(clean_comma_values)
+        aircraft_model_df['number_of_engines'] = aircraft_model_df['number_of_engines'].apply(clean_number_of_engines)
+
+        # Insert Aircraft Model Data
+        for _, row in aircraft_model_df.iterrows():
+            insert_stmt = """
+                INSERT INTO aircraft_model (mfr_mdl_code, aircraft_mfr, aircraft_model, 
+                                            type_aircraft, type_engine, aircraft_category, 
+                                            builder_certification, number_of_engines)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(insert_stmt, (
+                row['mfr_mdl_code'], truncate_string(row['aircraft_mfr'], 55),
+                truncate_string(row['aircraft_model'], 55), row['type_aircraft'],
+                row['type_engine'], row['aircraft_category'],
+                row['builder_certification'], row['number_of_engines']
+            ))
+
+        connection.commit()
+        print("Aircraft Model Data inserted successfully.")
+    except Exception as e:
+        print(f"Error during Aircraft Model data insertion: {e}")
+
+    # Load Aircraft Data
+    try:
+        print(f"Loading aircraft data from {aircraft_data_path}")
+        aircraft_df = pd.read_csv(aircraft_data_path)
+        # Clean and insert Aircraft Data here following similar logic
+        # ...
+    except Exception as e:
+        print(f"Error during Aircraft data insertion: {e}")
+
+    # Load Engine Data
+    try:
+        print(f"Loading engine data from {engine_data_path}")
+        engine_df = pd.read_csv(engine_data_path)
+        engine_df = engine_df.applymap(clean_comma_values)
+
+        # Insert Engine Data here following similar logic
+        # ...
+    except Exception as e:
+        print(f"Error during Engine data insertion: {e}")
+    
+    cursor.close()
+
+# Main function
+def main():
+    connection = create_connection()
+    if connection:
+        drop_and_create_tables(connection)
+        load_data(connection)
+        connection.close()
+
+if __name__ == "__main__":
+    main()
+

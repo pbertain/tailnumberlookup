@@ -1,0 +1,13 @@
+# Configuration file for faa_data_syncer.py
+# Version: 2
+
+# Directory where the FAA data files (MASTER.txt, ACFTREF.txt, ENGINE.txt) are stored
+data_directory: "/var/bertain-cdn/faa-aircraft-lookup/data/FAA_Database"
+
+# Database configuration (can be hardcoded if needed)
+database:
+  host: "localhost"
+  user: "faa_user"
+  password_env_var: "FAA_DB_PASSWORD"
+  database_name: "faa_aircraft"
+

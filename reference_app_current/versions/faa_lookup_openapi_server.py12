@@ -1,0 +1,113 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional
+from datetime import date
+import uvicorn
+from fastapi.responses import HTMLResponse
+
+app = FastAPI(title="FAA Aircraft Lookup API", version="12.0")
+
+# Add CORS middleware configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Adjust this in production to specific domains for security
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Aircraft response model
+class AircraftResponseModel(BaseModel):
+    n_number: str
+    serial_number: Optional[str]
+    mfr_model_code: Optional[str]
+    engine_mfr_model_code: Optional[str]
+    year_mfr: Optional[int]
+    type_registrant: Optional[str]
+    registrant_name: Optional[str]
+    street1: Optional[str]
+    street2: Optional[str]
+    city: Optional[str]
+    state: Optional[str]
+    zip_code: Optional[str]
+    registrant_region: Optional[str]
+    county_mail_code: Optional[str]
+    country_mail_code: Optional[str]
+    last_activity_date: Optional[date]
+    cert_issue_date: Optional[date]
+    cert_requested: Optional[str]
+    type_aircraft: Optional[str]
+    type_engine: Optional[str]
+    status_code: Optional[str]
+    mode_s_code: Optional[str]
+    fractional_ownership: Optional[str]
+    airworthiness_date: Optional[date]
+    other_name_1: Optional[str]
+    other_name_2: Optional[str]
+    other_name_3: Optional[str]
+    other_name_4: Optional[str]
+    other_name_5: Optional[str]
+    expiration_date: Optional[date]
+    unique_id: Optional[str]
+    kit_mfr: Optional[str]
+    kit_model_code: Optional[str]
+    mode_s_code_hex: Optional[str]
+
+# Example root page for user-friendly access
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    return """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>AirPuff Aircraft Lookup</title>
+        <link rel="stylesheet" href="https://airpuff.info/web/css/airpuff.css">
+    </head>
+    <body class="body_main">
+        <div class="header">Welcome to the AirPuff Aircraft Lookup API</div>
+        <div class="paragraph">
+            <p>This API allows you to search for aircraft information by entering an N-Number.</p>
+            <p><a href="/docs">Access the API Documentation</a></p>
+        </div>
+    </body>
+    </html>
+    """
+
+# Aircraft lookup endpoint
+@app.get("/aircraft/{n_number}", response_model=AircraftResponseModel)
+async def get_aircraft_by_n_number(n_number: str):
+    # Simulate aircraft data for the example
+    example_data = {
+        "n_number": n_number.upper(),
+        "serial_number": "1538",
+        "mfr_model_code": "2130001",
+        "engine_mfr_model_code": "17042",
+        "year_mfr": 2005,
+        "type_registrant": "1",
+        "registrant_name": "BERTAIN PAUL",
+        "street1": "PO BOX 1482",
+        "city": "DAVIS",
+        "state": "CA",
+        "zip_code": "956171482",
+        "registrant_region": "4",
+        "county_mail_code": "113",
+        "country_mail_code": "US",
+        "last_activity_date": date(2023, 4, 7),
+        "cert_issue_date": date(2020, 4, 8),
+        "cert_requested": "1N",
+        "type_aircraft": "4",
+        "type_engine": "1",
+        "status_code": "V",
+        "mode_s_code": "51547133",
+        "airworthiness_date": date(2005, 7, 28),
+        "expiration_date": date(2030, 4, 30),
+        "unique_id": "00190559",
+        "mode_s_code_hex": "A6CE5B"
+    }
+    return AircraftResponseModel(**example_data)
+
+if __name__ == "__main__":
+    uvicorn.run("faa_lookup_openapi_server:app", host="127.0.0.1", port=49080, reload=True)
+

@@ -1,0 +1,49 @@
+<!-- index.html - Version 1.0 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirPuff Tail Number Lookup</title>
+    <link rel="stylesheet" href="https://www.airpuff.info/web/css/airpuff.css">
+</head>
+<body class="body_main">
+    <div class="header">
+        <img src="https://airpuff.info/web/icons/airpuff-logo.png" alt="AirPuff Logo" style="float:left; margin-right: 20px;">
+        <span class="header_yel">AirPuff Tail Number Lookup</span>
+    </div>
+    <div class="basic" style="clear: both;">
+        <form id="lookupForm">
+            <label for="tailNumber" class="paragraph">Enter Tail Number:</label>
+            <input type="text" id="tailNumber" name="tailNumber" required>
+            <button type="submit" class="button">Search</button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('lookupForm').addEventListener('submit', function(event) {
+            event.preventDefault();  // Prevent the form from submitting in the default way
+            
+            const tailNumber = document.getElementById('tailNumber').value;
+            
+            fetch(`/lookup?tailNumber=${encodeURIComponent(tailNumber)}`, {
+                method: 'GET',
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log(data);  // Here you might show results on the page instead of console
+                alert(`Aircraft info: ${JSON.stringify(data)}`);
+            })
+            .catch(error => {
+                console.error('There was a problem with the fetch operation:', error);
+            });
+        });
+    </script>
+</body>
+</html>
+
