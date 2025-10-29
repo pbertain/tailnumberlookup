@@ -61,7 +61,7 @@ This application provides both a web interface and API endpoints for querying FA
 
 6. **Start the API server:**
    ```bash
-   uvicorn backend.api.main:app --host 0.0.0.0 --port 49080
+   uvicorn backend.api.main:app --host 127.0.0.1 --port 49080
    ```
 
 7. **Access the application:**
