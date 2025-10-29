@@ -7,9 +7,9 @@
     app_user: ansible
     app_directory: "{{ app_directory | default('/opt/tailnumberlookup') }}"
     api_port: "{{ api_port | default(49080) }}"
-    environment: "{{ environment | default('prod') }}"
-    service_name: "faa-api-{{ environment }}"
-    sync_service_name: "faa-sync-{{ environment }}"
+    deploy_env: "{{ deploy_env | default('prod') }}"
+    service_name: "faa-api-{{ deploy_env }}"
+    sync_service_name: "faa-sync-{{ deploy_env }}"
     python_version: "3"
     
   tasks:

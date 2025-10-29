@@ -1,5 +1,5 @@
 [Unit]
-Description=Run FAA Data Sync Multiple Times Daily ({{ environment }})
+Description=Run FAA Data Sync Multiple Times Daily ({{ deploy_env }})
 Requires={{ sync_service_name }}.service
 
 [Timer]

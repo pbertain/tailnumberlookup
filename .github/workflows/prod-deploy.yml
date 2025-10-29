@@ -80,7 +80,7 @@ jobs:
             playbook.yml \
             -e "app_directory=${{ env.APP_DIRECTORY }}" \
             -e "api_port=${{ env.APP_PORT }}" \
-            -e "environment=prod"
+            -e "deploy_env=prod"
       
       - name: Verify deployment
         run: |
