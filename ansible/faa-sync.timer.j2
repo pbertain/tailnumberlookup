@@ -1,6 +1,6 @@
 [Unit]
-Description=Run FAA Data Sync Multiple Times Daily
-Requires=faa-sync.service
+Description=Run FAA Data Sync Multiple Times Daily ({{ environment }})
+Requires={{ sync_service_name }}.service
 
 [Timer]
 # Run at 00:00, 06:00, 12:00, and 18:00 daily

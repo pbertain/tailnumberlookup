@@ -145,9 +145,33 @@ tailnumberlookup/
 - `reference_app_current/`: Current working implementation (MySQL-based)
 - `reference_app_rewrite/`: Previous rewrite attempt
 
+## CI/CD
+
+### Automated Deployment
+
+The project uses GitHub Actions for automated testing and deployment:
+
+- **Dev Environment**: Automatically deploys when code is pushed to the `dev` branch
+  - Port: 49081
+  - Directory: `/opt/tailnumberlookup-dev`
+  - Service: `faa-api-dev`
+  
+- **Prod Environment**: Automatically deploys when code is pushed to the `main` branch
+  - Port: 49080
+  - Directory: `/opt/tailnumberlookup-prod`
+  - Service: `faa-api-prod`
+
+### Workflow Process
+
+1. **Tests Run First**: All unit tests must pass before deployment
+2. **Ansible Deployment**: If tests pass, Ansible playbook runs automatically
+3. **Verification**: Health check endpoint is verified after deployment
+
+See `.github/workflows/README.md` for setup instructions and details.
+
 ## Deployment
 
-### Ansible Deployment
+### Manual Ansible Deployment
 
 The application can be deployed using Ansible. See `ansible/README.md` for detailed instructions.
 

@@ -1,0 +1,89 @@
+name: Deploy to Dev Environment
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:  # Allow manual trigger
+
+env:
+  ANSIBLE_HOST: host74.nird.club
+  ANSIBLE_USER: ansible
+  SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+  APP_PORT: 49081
+  APP_DIRECTORY: /opt/tailnumberlookup-dev
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Run unit tests
+        run: |
+          pytest tests/ -v --tb=short
+      
+      - name: Check test coverage
+        run: |
+          pytest tests/ --cov=backend --cov-report=term-missing --cov-report=xml
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+
+  deploy:
+    name: Deploy to Dev
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      
+      - name: Add host to known hosts
+        run: |
+          ssh-keyscan -H ${{ env.ANSIBLE_HOST }} >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+      
+      - name: Setup Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+      
+      - name: Run Ansible Playbook
+        run: |
+          cd ansible
+          ansible-playbook \
+            -u ${{ env.ANSIBLE_USER }} \
+            -i inventory.yml \
+            playbook.yml \
+            -e "app_directory=${{ env.APP_DIRECTORY }}" \
+            -e "api_port=${{ env.APP_PORT }}" \
+            -e "environment=dev"
+      
+      - name: Verify deployment
+        run: |
+          sleep 5
+          curl -f http://${{ env.ANSIBLE_HOST }}:${{ env.APP_PORT }}/api/health || exit 1
+

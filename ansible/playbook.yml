@@ -5,8 +5,11 @@
   vars:
     app_name: tailnumberlookup
     app_user: ansible
-    app_directory: /opt/tailnumberlookup
-    api_port: 49080
+    app_directory: "{{ app_directory | default('/opt/tailnumberlookup') }}"
+    api_port: "{{ api_port | default(49080) }}"
+    environment: "{{ environment | default('prod') }}"
+    service_name: "faa-api-{{ environment }}"
+    sync_service_name: "faa-sync-{{ environment }}"
     python_version: "3"
     
   tasks:
@@ -91,46 +94,52 @@
     - name: Copy systemd service file for API server
       template:
         src: faa-api.service.j2
-        dest: /etc/systemd/system/faa-api.service
+        dest: /etc/systemd/system/{{ service_name }}.service
         mode: '0644'
       notify: reload systemd
     
     - name: Copy systemd service file for sync
       template:
         src: faa-sync.service.j2
-        dest: /etc/systemd/system/faa-sync.service
+        dest: /etc/systemd/system/{{ sync_service_name }}.service
         mode: '0644'
       notify: reload systemd
     
     - name: Copy systemd timer file for sync
       template:
         src: faa-sync.timer.j2
-        dest: /etc/systemd/system/faa-sync.timer
+        dest: /etc/systemd/system/{{ sync_service_name }}.timer
         mode: '0644'
       notify: reload systemd
     
+    - name: Stop old API service if it exists (cleanup)
+      systemd:
+        name: "{{ service_name }}"
+        state: stopped
+      ignore_errors: yes
+    
     - name: Enable and start API service
       systemd:
-        name: faa-api
+        name: "{{ service_name }}"
         enabled: yes
         state: started
         daemon_reload: yes
     
     - name: Enable and start sync timer
       systemd:
-        name: faa-sync.timer
+        name: "{{ sync_service_name }}.timer"
         enabled: yes
         state: started
         daemon_reload: yes
     
     - name: Check API service status
       systemd:
-        name: faa-api
+        name: "{{ service_name }}"
       register: api_status
     
     - name: Display API service status
       debug:
-        msg: "API service is {{ api_status.status.ActiveState }}"
+        msg: "API service {{ service_name }} is {{ api_status.status.ActiveState }}"
   
   handlers:
     - name: reload systemd
