@@ -83,15 +83,33 @@
         executable: "{{ app_directory }}/venv/bin/pip"
       become_user: "{{ app_user }}"
     
-    - name: Initialize database if it doesn't exist
+    - name: Ensure data directory exists
+      file:
+        path: "{{ app_directory }}/data"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0755'
+    
+    - name: Initialize database
       command: "{{ app_directory }}/venv/bin/python -m backend.sync.database"
       args:
         chdir: "{{ app_directory }}"
-        creates: "{{ app_directory }}/data/faa_aircraft.db"
       environment:
         PYTHONPATH: "{{ app_directory }}"
       become_user: "{{ app_user }}"
+      ignore_errors: yes
       changed_when: false
+    
+    - name: Verify database file exists
+      stat:
+        path: "{{ app_directory }}/data/faa_aircraft.db"
+      register: db_file
+    
+    - name: Fail if database not created
+      fail:
+        msg: "Database file was not created. Check logs for errors."
+      when: not db_file.stat.exists
     
     - name: Copy systemd service file for API server
       template:
