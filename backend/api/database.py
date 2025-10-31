@@ -34,7 +34,7 @@ def get_aircraft_by_tail_number(tail_number: str) -> Optional[Dict[str, Any]]:
         Dictionary with aircraft data, or None if not found
     """
     # Normalize tail number: case-insensitive, optional N prefix
-    # Match reference app: store and query WITHOUT 'N' prefix (e.g., "538CD" not "N538CD")
+    # Match import: stored as uppercase, no 'N' prefix (e.g., "538CD" stored as "538CD")
     tail_number = tail_number.strip().upper()
     
     # Remove leading 'N' if present
@@ -50,7 +50,7 @@ def get_aircraft_by_tail_number(tail_number: str) -> Optional[Dict[str, Any]]:
     if not tail_number:
         return None
     
-    # Store WITHOUT 'N' prefix to match reference app and our import logic
+    # Query using exact format as stored (uppercase, no N prefix)
     normalized = tail_number
     
     conn = get_db_connection()

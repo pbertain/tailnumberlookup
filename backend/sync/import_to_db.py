@@ -215,8 +215,9 @@ def load_aircraft_data(cursor: sqlite3.Cursor, file_path: Path) -> None:
             
             # Match reference app EXACTLY:
             # n_number = truncate_string(row.get('N-NUMBER', '').strip(), 5) or None
-            # But we can't use None for PRIMARY KEY, so we skip empty values
-            n_number_raw = row.get('N-NUMBER', '').strip()
+            # Reference app stores as-is from CSV (no uppercase, no N-prefix removal)
+            # But we uppercase for consistency in SQLite queries
+            n_number_raw = row.get('N-NUMBER', '').strip().upper()
             n_number = truncate_string(n_number_raw, 5) or None
             
             if not n_number:
