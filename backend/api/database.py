@@ -34,6 +34,7 @@ def get_aircraft_by_tail_number(tail_number: str) -> Optional[Dict[str, Any]]:
         Dictionary with aircraft data, or None if not found
     """
     # Normalize tail number: case-insensitive, optional N prefix
+    # Match reference app: store and query WITHOUT 'N' prefix (e.g., "538CD" not "N538CD")
     tail_number = tail_number.strip().upper()
     
     # Remove leading 'N' if present
@@ -43,17 +44,20 @@ def get_aircraft_by_tail_number(tail_number: str) -> Optional[Dict[str, Any]]:
     # Remove any whitespace that might remain
     tail_number = tail_number.strip()
     
-    # Limit to 5 characters (N-number format: N + up to 5 alphanumeric chars)
+    # Limit to 5 characters (FAA standard, matches database schema TEXT(5))
     tail_number = tail_number[:5]
     
-    # Re-add N prefix for consistent format
-    normalized = f"N{tail_number}"
+    if not tail_number:
+        return None
+    
+    # Store WITHOUT 'N' prefix to match reference app and our import logic
+    normalized = tail_number
     
     conn = get_db_connection()
     cursor = conn.cursor()
     
     # Query with LEFT JOINs to get related data
-    # Use UPPER() for case-insensitive comparison (though we normalize, this is extra safety)
+    # Match reference app: query using n_number WITHOUT 'N' prefix
     cursor.execute("""
         SELECT 
             a.*,
@@ -68,7 +72,7 @@ def get_aircraft_by_tail_number(tail_number: str) -> Optional[Dict[str, Any]]:
         FROM aircraft a
         LEFT JOIN aircraft_model am ON a.mfr_model_code = am.model_code
         LEFT JOIN engine e ON a.engine_mfr_model_code = e.engine_code
-        WHERE a.n_number = ?
+        WHERE UPPER(TRIM(a.n_number)) = ?
     """, (normalized,))
     
     row = cursor.fetchone()
