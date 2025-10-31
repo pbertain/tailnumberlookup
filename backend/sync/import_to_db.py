@@ -213,26 +213,15 @@ def load_aircraft_data(cursor: sqlite3.Cursor, file_path: Path) -> None:
                 print(f"    N-NUMBER value: '{row.get('N-NUMBER', 'NOT FOUND')}'")
                 print(f"    First 5 values: {dict(list(row.items())[:5])}")
             
-            # FAA N-NUMBER field format: Can be "N12345" or just "12345" 
-            # Match reference app: truncate to 5 chars, store with N prefix for consistency
-            n_number_raw = row.get('N-NUMBER', '').strip().upper()
-            if not n_number_raw:
+            # Match reference app EXACTLY:
+            # n_number = truncate_string(row.get('N-NUMBER', '').strip(), 5) or None
+            # But we can't use None for PRIMARY KEY, so we skip empty values
+            n_number_raw = row.get('N-NUMBER', '').strip()
+            n_number = truncate_string(n_number_raw, 5) or None
+            
+            if not n_number:
                 skipped_empty += 1
                 continue
-            
-            # Remove leading N if present (reference app stores without N prefix)
-            if n_number_raw.startswith('N'):
-                n_number_raw = n_number_raw[1:]
-            
-            # Truncate to 5 characters (FAA standard) - match reference app format
-            n_number_clean = n_number_raw[:5].strip()
-            if not n_number_clean:
-                skipped_empty += 1
-                continue  # Skip if empty after processing
-            
-            # Store WITHOUT N prefix to match reference app (stores as "538CD", not "N538CD")
-            # This matches the reference app which uses CHAR(5) without N prefix
-            n_number = n_number_clean
             
             # Debug: log first few to verify format
             if count < 5:
