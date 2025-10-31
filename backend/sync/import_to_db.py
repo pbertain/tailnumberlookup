@@ -175,8 +175,15 @@ def load_aircraft_data(cursor: sqlite3.Cursor, file_path: Path) -> None:
         print(f"ERROR: File does not exist: {file_path}")
         return
     
+    # Try to detect delimiter by reading first line
+    with open(file_path, 'r', encoding='utf-8-sig') as test_file:
+        first_line = test_file.readline()
+        # Detect delimiter - FAA files typically use comma, but check for tabs too
+        delimiter = ',' if ',' in first_line else '\t' if '\t' in first_line else ','
+        print(f"  Detected delimiter: {repr(delimiter)}")
+    
     with open(file_path, 'r', encoding='utf-8-sig') as file:
-        csv_reader = csv.DictReader(file)
+        csv_reader = csv.DictReader(file, delimiter=delimiter)
         
         # Debug: Print field names to verify headers
         fieldnames = csv_reader.fieldnames
@@ -356,9 +363,18 @@ def import_faa_data(force: bool = False) -> None:
     cursor.execute("SELECT COUNT(*) FROM aircraft")
     aircraft_count = cursor.fetchone()[0]
     
+    print(f"Current aircraft count in database: {aircraft_count:,}")
+    
     if aircraft_count == 0 and not force:
-        print("Database is empty. Force importing all data...")
+        print("⚠ Database is empty. Force importing all data...")
+        # Clear file metadata to force fresh import
+        cursor.execute("DELETE FROM file_metadata")
+        cursor.connection.commit()
+        print("  Cleared file metadata to force full import.")
         force = True
+    
+    if force:
+        print("  Force import mode: Will reload all data regardless of file changes.")
     
     # Define file paths
     master_file = data_dir / 'MASTER.txt'

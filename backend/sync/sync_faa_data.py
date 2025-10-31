@@ -43,7 +43,8 @@ def main():
     # Step 2: Import to database
     print("Step 2: Importing data to database...")
     try:
-        import_faa_data()
+        # Force import if database is empty (handled inside import_faa_data)
+        import_faa_data(force=False)  # Will auto-force if empty
         print("✓ Sync complete!")
         sys.exit(0)
     except Exception as e:
