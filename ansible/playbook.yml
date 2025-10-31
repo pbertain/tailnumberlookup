@@ -158,6 +158,21 @@
         state: started
         daemon_reload: yes
     
+    - name: Trigger sync service immediately to populate database
+      shell: systemctl start {{ sync_service_name }}
+      async: 300
+      poll: 10
+      register: sync_result
+    
+    - name: Wait for sync service to complete
+      async_status:
+        jid: "{{ sync_result.ansible_job_id }}"
+      register: sync_job_result
+      until: sync_job_result.finished
+      retries: 30
+      delay: 10
+      ignore_errors: yes
+    
     - name: Check API service status
       systemd:
         name: "{{ service_name }}"

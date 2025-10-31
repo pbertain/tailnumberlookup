@@ -327,6 +327,9 @@ def load_data_if_changed(
         return True
     else:
         print(f"No changes detected for {file_name}, skipping load.")
+        # Check if file exists but metadata says no changes - might need import anyway
+        if not file_path.exists():
+            print(f"  WARNING: File {file_path.name} does not exist! Cannot import.")
         return False
 
 
