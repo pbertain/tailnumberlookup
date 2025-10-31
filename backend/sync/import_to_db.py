@@ -238,7 +238,7 @@ def load_aircraft_data(cursor: sqlite3.Cursor, file_path: Path) -> None:
                         mode_s_code, fractional_ownership, airworthiness_date, other_name_1,
                         other_name_2, other_name_3, other_name_4, other_name_5, expiration_date,
                         unique_id, kit_mfr, kit_model_code, mode_s_code_hex
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                 n_number,
                 truncate_string(row.get('SERIAL NUMBER', ''), 30),
