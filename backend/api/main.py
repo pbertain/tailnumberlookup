@@ -14,12 +14,13 @@ from .debug import router as debug_router
 
 
 # Create FastAPI app
+# Note: We use custom endpoints for docs/redoc, so disable default ones
 app = FastAPI(
     title="Tail Number Lookup API",
     description="API for querying FAA aircraft registration data by tail number (N-Number)",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
+    docs_url=None,  # Disable default, use custom endpoint
+    redoc_url=None  # Disable default, use custom endpoint
 )
 
 # Include debug router
@@ -229,7 +230,6 @@ swagger_ui_html = """
             background-color: var(--airpuff-secondary);
         }
     </style>
-    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <header class="header-main">
