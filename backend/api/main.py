@@ -174,6 +174,38 @@ swagger_ui_html = """
             color: white;
         }
         
+        .header-nav {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        .header-nav-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.4rem 0.75rem;
+            min-width: 60px;
+            height: auto;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            white-space: nowrap;
+        }
+        
+        .header-nav-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: var(--airpuff-accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
         /* Override Swagger UI colors */
         .swagger-ui .topbar {
             background-color: var(--airpuff-primary);
@@ -238,6 +270,10 @@ swagger_ui_html = """
                 <img src="https://www.splitsp.lat/images/airpuff/tnl-logo-dark.png" alt="Tail Number Lookup Logo" class="logo">
             </a>
             <h1 class="header-title">Tail Number Lookup API</h1>
+            <nav class="header-nav">
+                <a href="/" class="header-nav-link" title="Home">🏠 Home</a>
+                <a href="https://www.github.com/pbertain/tailnumberlookup/" target="_blank" class="header-nav-link" title="GitHub Repository">🐙 GitHub</a>
+            </nav>
         </div>
     </header>
     <div id="swagger-ui"></div>
@@ -325,6 +361,38 @@ redoc_html = """
             color: white;
         }
         
+        .header-nav {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        .header-nav-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.4rem 0.75rem;
+            min-width: 60px;
+            height: auto;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            white-space: nowrap;
+        }
+        
+        .header-nav-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: var(--airpuff-accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
         body {
             background-color: var(--airpuff-bg);
             margin: 0;
@@ -344,6 +412,10 @@ redoc_html = """
                 <img src="https://www.splitsp.lat/images/airpuff/tnl-logo-dark.png" alt="Tail Number Lookup Logo" class="logo">
             </a>
             <h1 class="header-title">Tail Number Lookup API</h1>
+            <nav class="header-nav">
+                <a href="/" class="header-nav-link" title="Home">🏠 Home</a>
+                <a href="https://www.github.com/pbertain/tailnumberlookup/" target="_blank" class="header-nav-link" title="GitHub Repository">🐙 GitHub</a>
+            </nav>
         </div>
     </header>
     <redoc spec-url="/openapi.json"></redoc>
