@@ -80,13 +80,15 @@
 <body>
     <header class="header-main">
         <div class="header-content">
-            <img src="https://www.splitsp.lat/images/airpuff/tnl-logo-dark.png" alt="Tail Number Lookup Logo" class="logo">
+            <a href="/">
+                <img src="https://www.splitsp.lat/images/airpuff/tnl-logo-dark.png" alt="Tail Number Lookup Logo" class="logo">
+            </a>
             <h1 class="header-title">Database Statistics</h1>
             <nav class="header-nav">
-                <a href="/docs" class="header-nav-link" title="Try it out">🚀</a>
-                <a href="/redoc" class="header-nav-link" title="API Docs">📖</a>
-                <a href="/debug/stats" class="header-nav-link" title="Debug">🔍</a>
-                <a href="/stats" class="header-nav-link" title="Stats">📊</a>
+                <a href="/docs" class="header-nav-link" title="Try it out">Try it out</a>
+                <a href="/redoc" class="header-nav-link" title="API Docs">API Docs</a>
+                <a href="/debug/stats" class="header-nav-link" title="Debug">Debug</a>
+                <a href="/stats" class="header-nav-link" title="Stats">Stats</a>
             </nav>
         </div>
     </header>
@@ -192,7 +194,10 @@
                 
                 if (data.last_sync) {
                     const syncDate = new Date(data.last_sync);
-                    document.getElementById('last-sync').textContent = syncDate.toLocaleString();
+                    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                    const epochTime = Math.floor(syncDate.getTime() / 1000);
+                    document.getElementById('last-sync').textContent = 
+                        `${syncDate.toLocaleString('en-US', { timeZoneName: 'short' })} / ${epochTime}`;
                 } else {
                     document.getElementById('last-sync').textContent = 'Never';
                 }

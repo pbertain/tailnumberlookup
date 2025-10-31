@@ -131,8 +131,46 @@ swagger_ui_html = """
             --airpuff-primary: #1e3a5f;
             --airpuff-secondary: #2d5aa0;
             --airpuff-accent: #ffd700;
-            --airpuff-bg: #f5f5f5;
+            --airpuff-bg: #b3d9f2;
             --airpuff-text: #333;
+        }
+        
+        /* Header matching main page */
+        .header-main {
+            background: linear-gradient(135deg, var(--airpuff-primary) 0%, var(--airpuff-secondary) 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 2px 10px rgba(30, 58, 95, 0.1);
+            border-bottom: 3px solid var(--airpuff-accent);
+            margin-bottom: 0;
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        
+        .header-content a {
+            text-decoration: none;
+        }
+        
+        .header-content .logo {
+            height: 50px;
+            width: auto;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+        }
+        
+        .header-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            flex: 1;
+            margin: 0;
+            color: white;
         }
         
         /* Override Swagger UI colors */
@@ -164,13 +202,19 @@ swagger_ui_html = """
         
         /* Logo styling */
         .swagger-ui .topbar-wrapper img {
-            content: url('https://airpuff.info/web/icons/airpuff-logo.png');
+            content: url('https://www.splitsp.lat/images/airpuff/tnl-logo-dark.png');
             max-height: 40px;
             padding: 5px;
         }
         
         body {
             background-color: var(--airpuff-bg);
+            margin: 0;
+            padding: 0;
+        }
+        
+        .swagger-ui {
+            padding: 0 2rem 2rem;
         }
         
         .swagger-ui .info {
@@ -185,8 +229,17 @@ swagger_ui_html = """
             background-color: var(--airpuff-secondary);
         }
     </style>
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
+    <header class="header-main">
+        <div class="header-content">
+            <a href="/">
+                <img src="https://www.splitsp.lat/images/airpuff/tnl-logo-dark.png" alt="Tail Number Lookup Logo" class="logo">
+            </a>
+            <h1 class="header-title">Tail Number Lookup API</h1>
+        </div>
+    </header>
     <div id="swagger-ui"></div>
     <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script>
     <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-standalone-preset.js"></script>
@@ -215,6 +268,95 @@ swagger_ui_html = """
 async def custom_swagger_ui_html():
     """Custom Swagger UI with AirPuff theming."""
     return HTMLResponse(content=swagger_ui_html)
+
+
+# Custom ReDoc HTML with AirPuff styling
+redoc_html = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tail Number Lookup API - ReDoc</title>
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" />
+    <link rel="icon" type="image/png" href="https://airpuff.info/web/icons/airpuff-logo.png" />
+    <style>
+        :root {
+            --airpuff-primary: #1e3a5f;
+            --airpuff-secondary: #2d5aa0;
+            --airpuff-accent: #ffd700;
+            --airpuff-bg: #b3d9f2;
+            --airpuff-text: #333;
+        }
+        
+        /* Header matching main page */
+        .header-main {
+            background: linear-gradient(135deg, var(--airpuff-primary) 0%, var(--airpuff-secondary) 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 2px 10px rgba(30, 58, 95, 0.1);
+            border-bottom: 3px solid var(--airpuff-accent);
+            margin-bottom: 0;
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        
+        .header-content a {
+            text-decoration: none;
+        }
+        
+        .header-content .logo {
+            height: 50px;
+            width: auto;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+        }
+        
+        .header-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            flex: 1;
+            margin: 0;
+            color: white;
+        }
+        
+        body {
+            background-color: var(--airpuff-bg);
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* Override ReDoc colors */
+        redoc {
+            --primary-color: var(--airpuff-secondary);
+        }
+    </style>
+</head>
+<body>
+    <header class="header-main">
+        <div class="header-content">
+            <a href="/">
+                <img src="https://www.splitsp.lat/images/airpuff/tnl-logo-dark.png" alt="Tail Number Lookup Logo" class="logo">
+            </a>
+            <h1 class="header-title">Tail Number Lookup API</h1>
+        </div>
+    </header>
+    <redoc spec-url="/openapi.json"></redoc>
+    <script src="https://cdn.jsdelivr.net/npm/redoc@latest/bundles/redoc.standalone.js"></script>
+</body>
+</html>
+"""
+
+
+@app.get("/redoc", include_in_schema=False)
+async def custom_redoc_html():
+    """Custom ReDoc with AirPuff theming."""
+    return HTMLResponse(content=redoc_html)
 
 
 @app.get("/api/health", response_model=HealthResponse)
