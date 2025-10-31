@@ -195,44 +195,53 @@ def load_aircraft_data(cursor: sqlite3.Cursor, file_path: Path) -> None:
         
         count = 0
         skipped_empty = 0
+        first_row_printed = False
         
-        for row in csv_reader:
+        for row_num, row in enumerate(csv_reader, start=2):  # Start at 2 because row 1 is headers
+            # Print first data row for debugging
+            if not first_row_printed and row:
+                first_row_printed = True
+                print(f"  First data row (line {row_num}):")
+                print(f"    Available keys: {list(row.keys())[:15]}")
+                print(f"    N-NUMBER value: '{row.get('N-NUMBER', 'NOT FOUND')}'")
+                print(f"    First 5 values: {dict(list(row.items())[:5])}")
+            
             # FAA N-NUMBER field format: Can be "N12345" or just "12345" 
-            # Normalize: uppercase, trim, ensure N prefix, limit to 6 chars total (N + 5)
+            # Match reference app: truncate to 5 chars, store with N prefix for consistency
             n_number_raw = row.get('N-NUMBER', '').strip().upper()
             if not n_number_raw:
                 skipped_empty += 1
                 continue
             
-            # Remove leading N if present, then we'll add it back
+            # Remove leading N if present
             if n_number_raw.startswith('N'):
                 n_number_raw = n_number_raw[1:]
             
-            # Limit to 5 characters after N, then add N prefix
-            # FAA format: N + up to 5 alphanumeric characters
+            # Truncate to 5 characters (FAA standard)
             n_number_clean = n_number_raw[:5].strip()
             if not n_number_clean:
+                skipped_empty += 1
                 continue  # Skip if empty after processing
             
-            # Re-add N prefix
+            # Store with N prefix (our schema uses TEXT(6) for "N538CD" format)
             n_number = f"N{n_number_clean}"
             
             # Debug: log first few to verify format
             if count < 5:
-                print(f"  Sample row {count+1}: '{row.get('N-NUMBER', '')}' -> '{n_number}'")
+                print(f"  Sample row {count+1}: Original='{row.get('N-NUMBER', '')}' -> Normalized='{n_number}'")
             
             try:
                 cursor.execute("""
-                INSERT OR REPLACE INTO aircraft (
-                    n_number, serial_number, mfr_model_code, engine_mfr_model_code, year_mfr,
-                    type_registrant, registrant_name, street1, street2, city, state, zip_code,
-                    registrant_region, county_mail_code, country_mail_code, last_activity_date,
-                    cert_issue_date, cert_requested, type_aircraft, type_engine, status_code,
-                    mode_s_code, fractional_ownership, airworthiness_date, other_name_1,
-                    other_name_2, other_name_3, other_name_4, other_name_5, expiration_date,
-                    unique_id, kit_mfr, kit_model_code, mode_s_code_hex
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
+                    INSERT OR REPLACE INTO aircraft (
+                        n_number, serial_number, mfr_model_code, engine_mfr_model_code, year_mfr,
+                        type_registrant, registrant_name, street1, street2, city, state, zip_code,
+                        registrant_region, county_mail_code, country_mail_code, last_activity_date,
+                        cert_issue_date, cert_requested, type_aircraft, type_engine, status_code,
+                        mode_s_code, fractional_ownership, airworthiness_date, other_name_1,
+                        other_name_2, other_name_3, other_name_4, other_name_5, expiration_date,
+                        unique_id, kit_mfr, kit_model_code, mode_s_code_hex
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
                 n_number,
                 truncate_string(row.get('SERIAL NUMBER', ''), 30),
                 truncate_string(row.get('MFR MDL CODE', ''), 7),
@@ -269,10 +278,16 @@ def load_aircraft_data(cursor: sqlite3.Cursor, file_path: Path) -> None:
                 truncate_string(row.get('MODE S CODE HEX', ''), 10)
                 ))
                 count += 1
-            except Exception as e:
-                print(f"  ERROR inserting row with N-number '{n_number}': {e}")
+            except sqlite3.Error as e:
+                print(f"  SQL ERROR inserting row with N-number '{n_number}': {e}")
                 if count < 3:
-                    print(f"    Row data: {dict(list(row.items())[:5])}")
+                    print(f"    Sample row keys: {list(row.keys())[:10]}")
+                    print(f"    N-NUMBER value: '{row.get('N-NUMBER', 'MISSING')}'")
+                continue
+            except Exception as e:
+                print(f"  ERROR inserting row with N-number '{n_number}': {type(e).__name__}: {e}")
+                if count < 3:
+                    print(f"    Sample row keys: {list(row.keys())[:10]}")
                 continue
             
             if count % 50000 == 0:
@@ -280,9 +295,11 @@ def load_aircraft_data(cursor: sqlite3.Cursor, file_path: Path) -> None:
                 print(f"  Processed {count} aircraft...")
         
         cursor.connection.commit()
-        print(f"  Loaded {count} aircraft.")
+        print(f"  ✓ Loaded {count:,} aircraft records.")
         if skipped_empty > 0:
-            print(f"  Skipped {skipped_empty} rows with empty N-number.")
+            print(f"  ⚠ Skipped {skipped_empty:,} rows with empty or invalid N-number.")
+        if count == 0:
+            print(f"  ❌ WARNING: No aircraft records loaded! Check CSV headers and format.")
 
 
 def load_data_if_changed(

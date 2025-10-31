@@ -42,19 +42,33 @@ document.addEventListener("DOMContentLoaded", () => {
     const urlParams = new URLSearchParams(window.location.search);
     const tailNumber = urlParams.get("nNumber") || urlParams.get("tailNumber");
     
-    if (tailNumber) {
-        document.getElementById("tailNumber").value = tailNumber.replace(/^N/i, "");
-        searchAircraft(null, tailNumber);
+        if (tailNumber) {
+        // Remove N prefix for display
+        const displayValue = tailNumber.replace(/^N/i, "").toUpperCase();
+        document.getElementById("tailNumber").value = displayValue;
+        searchAircraft(null, displayValue);
     }
     
     // Set up form handler
     const form = document.getElementById("searchForm");
+    const input = document.getElementById("tailNumber");
+    
+    // Auto-uppercase and remove 'N' prefix as user types (for display only)
+    input.addEventListener("input", (e) => {
+        let value = e.target.value.toUpperCase().replace(/^N/, '').replace(/[^0-9A-Z]/g, '');
+        // Limit to 5 characters
+        if (value.length > 5) {
+            value = value.slice(0, 5);
+        }
+        e.target.value = value;
+    });
+    
     form.addEventListener("submit", (e) => {
         e.preventDefault();
-        const input = document.getElementById("tailNumber");
-        const value = input.value.trim().toUpperCase();
+        const value = input.value.trim().toUpperCase().replace(/^N/, '');
         if (value) {
-            searchAircraft(e, `N${value}`);
+            // API handles case-insensitivity, but we'll send uppercase
+            searchAircraft(e, value);  // Send without N prefix, API will add it
         }
     });
     
@@ -66,8 +80,12 @@ document.addEventListener("DOMContentLoaded", () => {
 async function searchAircraft(event, tailNumber = null) {
     if (event) event.preventDefault();
     
-    const searchValue = tailNumber || `N${document.getElementById("tailNumber").value.trim().toUpperCase()}`;
+    // Normalize: remove N prefix if present, uppercase, API will handle case-insensitivity
+    let searchValue = tailNumber || document.getElementById("tailNumber").value.trim().toUpperCase();
     if (!searchValue) return;
+    
+    // Remove N prefix if user included it
+    searchValue = searchValue.replace(/^N/, '');
     
     const resultDiv = document.getElementById("result");
     const loadingDiv = document.getElementById("loading");
