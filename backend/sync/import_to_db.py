@@ -171,15 +171,37 @@ def load_aircraft_data(cursor: sqlite3.Cursor, file_path: Path) -> None:
     """Load aircraft registration data from MASTER.txt."""
     print(f"Loading aircraft data from {file_path.name}...")
     
+    if not file_path.exists():
+        print(f"ERROR: File does not exist: {file_path}")
+        return
+    
     with open(file_path, 'r', encoding='utf-8-sig') as file:
         csv_reader = csv.DictReader(file)
+        
+        # Debug: Print field names to verify headers
+        fieldnames = csv_reader.fieldnames
+        if fieldnames:
+            print(f"  CSV Headers found: {len(fieldnames)} fields")
+            print(f"  First few headers: {fieldnames[:10]}")
+        else:
+            print("  WARNING: No CSV headers found!")
+            return
+        
+        # Debug: Check if 'N-NUMBER' field exists
+        if 'N-NUMBER' not in fieldnames:
+            print(f"  ERROR: 'N-NUMBER' field not found in CSV headers!")
+            print(f"  Available fields: {list(fieldnames)}")
+            return
+        
         count = 0
+        skipped_empty = 0
         
         for row in csv_reader:
             # FAA N-NUMBER field format: Can be "N12345" or just "12345" 
             # Normalize: uppercase, trim, ensure N prefix, limit to 6 chars total (N + 5)
             n_number_raw = row.get('N-NUMBER', '').strip().upper()
             if not n_number_raw:
+                skipped_empty += 1
                 continue
             
             # Remove leading N if present, then we'll add it back
@@ -197,9 +219,10 @@ def load_aircraft_data(cursor: sqlite3.Cursor, file_path: Path) -> None:
             
             # Debug: log first few to verify format
             if count < 5:
-                print(f"  Sample N-number: '{row.get('N-NUMBER', '')}' -> '{n_number}'")
+                print(f"  Sample row {count+1}: '{row.get('N-NUMBER', '')}' -> '{n_number}'")
             
-            cursor.execute("""
+            try:
+                cursor.execute("""
                 INSERT OR REPLACE INTO aircraft (
                     n_number, serial_number, mfr_model_code, engine_mfr_model_code, year_mfr,
                     type_registrant, registrant_name, street1, street2, city, state, zip_code,
@@ -244,8 +267,13 @@ def load_aircraft_data(cursor: sqlite3.Cursor, file_path: Path) -> None:
                 truncate_string(row.get('KIT MFR', ''), 30),
                 truncate_string(row.get(' KIT MODEL', ''), 20),
                 truncate_string(row.get('MODE S CODE HEX', ''), 10)
-            ))
-            count += 1
+                ))
+                count += 1
+            except Exception as e:
+                print(f"  ERROR inserting row with N-number '{n_number}': {e}")
+                if count < 3:
+                    print(f"    Row data: {dict(list(row.items())[:5])}")
+                continue
             
             if count % 50000 == 0:
                 cursor.connection.commit()
@@ -253,6 +281,8 @@ def load_aircraft_data(cursor: sqlite3.Cursor, file_path: Path) -> None:
         
         cursor.connection.commit()
         print(f"  Loaded {count} aircraft.")
+        if skipped_empty > 0:
+            print(f"  Skipped {skipped_empty} rows with empty N-number.")
 
 
 def load_data_if_changed(

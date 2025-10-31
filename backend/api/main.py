@@ -367,6 +367,25 @@ async def get_aircraft_curl(tail_number: str):
     return PlainTextResponse(content=text_output)
 
 
+# Stats HTML pages
+@app.get("/debug/stats", response_class=HTMLResponse)
+async def debug_stats_html():
+    """Serve debug stats HTML page."""
+    stats_path = Path(__file__).parent.parent.parent / "frontend" / "debug" / "stats.html"
+    if stats_path.exists():
+        return HTMLResponse(content=stats_path.read_text())
+    raise HTTPException(status_code=404, detail="Stats page not found")
+
+
+@app.get("/stats", response_class=HTMLResponse)
+async def stats_html():
+    """Serve stats HTML page."""
+    stats_path = Path(__file__).parent.parent.parent / "frontend" / "stats.html"
+    if stats_path.exists():
+        return HTMLResponse(content=stats_path.read_text())
+    raise HTTPException(status_code=404, detail="Stats page not found")
+
+
 # Mount static files for frontend (if exists)
 frontend_path = Path(__file__).parent.parent.parent / "frontend"
 if frontend_path.exists():

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistics - Tail Number Lookup</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="https://airpuff.info/web/icons/airpuff-logo.png">
+    <style>
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px var(--airpuff-shadow);
+            border-left: 4px solid var(--airpuff-secondary);
+        }
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--airpuff-primary);
+            margin: 0.5rem 0;
+        }
+        .stat-label {
+            color: var(--airpuff-text-light);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .info-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px var(--airpuff-shadow);
+            margin-bottom: 2rem;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--airpuff-border);
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            font-weight: 600;
+            color: var(--airpuff-primary);
+        }
+        .info-value {
+            color: var(--airpuff-text);
+        }
+        .error-message {
+            background: #fff5f5;
+            border: 2px solid var(--airpuff-error);
+            border-radius: 8px;
+            padding: 1.5rem;
+            color: var(--airpuff-error);
+        }
+        .sample-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .sample-badge {
+            background: var(--airpuff-light);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            color: var(--airpuff-primary);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <header class="header-main">
+        <div class="header-content">
+            <img src="https://airpuff.info/web/icons/airpuff-logo.png" alt="AirPuff Logo" class="logo">
+            <h1 class="header-title">Database Statistics</h1>
+            <nav class="header-nav">
+                <a href="/docs" class="header-nav-link" title="Try it out">🚀</a>
+                <a href="/redoc" class="header-nav-link" title="API Docs">📖</a>
+                <a href="/debug/stats" class="header-nav-link" title="Debug">🔍</a>
+                <a href="/stats" class="header-nav-link" title="Stats">📊</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Loading statistics...</p>
+        </div>
+
+        <div id="content" class="hidden">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Aircraft</div>
+                    <div class="stat-value" id="total-records">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Aircraft Models</div>
+                    <div class="stat-value" id="model-records">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Engines</div>
+                    <div class="stat-value" id="engine-records">-</div>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <h2 style="color: var(--airpuff-primary); margin-bottom: 1rem;">Database Information</h2>
+                <div class="info-row">
+                    <span class="info-label">Database Type</span>
+                    <span class="info-value" id="db-type">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">SQLite Version</span>
+                    <span class="info-value" id="sqlite-version">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Database Size</span>
+                    <span class="info-value" id="db-size">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Page Count</span>
+                    <span class="info-value" id="page-count">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Page Size</span>
+                    <span class="info-value" id="page-size">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Last Sync</span>
+                    <span class="info-value" id="last-sync">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Database File</span>
+                    <span class="info-value" id="db-file" style="font-family: monospace; font-size: 0.9rem;">-</span>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <h2 style="color: var(--airpuff-primary); margin-bottom: 1rem;">Sample Tail Numbers</h2>
+                <div class="sample-list" id="sample-numbers"></div>
+            </div>
+        </div>
+
+        <div id="error" class="error-message hidden"></div>
+    </main>
+
+    <footer class="footer-main">
+        <div class="footer-content">
+            <p>
+                <a href="https://fli-rite.net" target="_blank" class="footer-link">
+                    <img src="https://fli-rite.net/static/img/fli-rite-logo-block.png" alt="Fli-Rite Logo" class="footer-logo">
+                    Powered by Fli-Rite
+                </a>
+            </p>
+            <p class="footer-secondary">
+                <a href="https://www.elementspuff.net" target="_blank" class="footer-link">
+                    Part of the Cloud Puff family
+                    <img src="https://www.elementspuff.net/static/img/powered-by-puhfph-cloud-logo.png" alt="Cloud Puff Logo" class="footer-logo-small">
+                </a>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/v1/stats');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                const data = await response.json();
+
+                document.getElementById('total-records').textContent = data.total_records.toLocaleString();
+                document.getElementById('model-records').textContent = data.model_records.toLocaleString();
+                document.getElementById('engine-records').textContent = data.engine_records.toLocaleString();
+
+                document.getElementById('db-type').textContent = data.database_type;
+                document.getElementById('sqlite-version').textContent = data.sqlite_version;
+                document.getElementById('db-size').textContent = `${data.database_size_mb} MB`;
+                document.getElementById('page-count').textContent = data.page_count.toLocaleString();
+                document.getElementById('page-size').textContent = `${data.page_size_bytes.toLocaleString()} bytes`;
+                
+                if (data.last_sync) {
+                    const syncDate = new Date(data.last_sync);
+                    document.getElementById('last-sync').textContent = syncDate.toLocaleString();
+                } else {
+                    document.getElementById('last-sync').textContent = 'Never';
+                }
+
+                document.getElementById('db-file').textContent = data.database_file;
+
+                const sampleList = document.getElementById('sample-numbers');
+                sampleList.innerHTML = data.sample_tail_numbers.map(n => 
+                    `<span class="sample-badge">${n}</span>`
+                ).join('');
+
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('content').classList.remove('hidden');
+            } catch (error) {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('error').textContent = `Error loading stats: ${error.message}`;
+                document.getElementById('error').classList.remove('hidden');
+            }
+        }
+
+        loadStats();
+    </script>
+</body>
+</html>
+
