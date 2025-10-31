@@ -176,18 +176,28 @@ def load_aircraft_data(cursor: sqlite3.Cursor, file_path: Path) -> None:
         count = 0
         
         for row in csv_reader:
-            # FAA N-NUMBER field can be up to 5 chars (without N) or 6 chars (with N)
-            # Normalize: remove leading N if present, uppercase, trim, limit to 5 chars, add N back
+            # FAA N-NUMBER field format: Can be "N12345" or just "12345" 
+            # Normalize: uppercase, trim, ensure N prefix, limit to 6 chars total (N + 5)
             n_number_raw = row.get('N-NUMBER', '').strip().upper()
             if not n_number_raw:
                 continue
             
-            # Remove leading N if present
+            # Remove leading N if present, then we'll add it back
             if n_number_raw.startswith('N'):
                 n_number_raw = n_number_raw[1:]
             
-            # Limit to 5 characters (N-number format: up to 5 alphanumeric after N)
-            n_number = f"N{n_number_raw[:5]}"
+            # Limit to 5 characters after N, then add N prefix
+            # FAA format: N + up to 5 alphanumeric characters
+            n_number_clean = n_number_raw[:5].strip()
+            if not n_number_clean:
+                continue  # Skip if empty after processing
+            
+            # Re-add N prefix
+            n_number = f"N{n_number_clean}"
+            
+            # Debug: log first few to verify format
+            if count < 5:
+                print(f"  Sample N-number: '{row.get('N-NUMBER', '')}' -> '{n_number}'")
             
             cursor.execute("""
                 INSERT OR REPLACE INTO aircraft (
