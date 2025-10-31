@@ -220,18 +220,19 @@ def load_aircraft_data(cursor: sqlite3.Cursor, file_path: Path) -> None:
                 skipped_empty += 1
                 continue
             
-            # Remove leading N if present
+            # Remove leading N if present (reference app stores without N prefix)
             if n_number_raw.startswith('N'):
                 n_number_raw = n_number_raw[1:]
             
-            # Truncate to 5 characters (FAA standard)
+            # Truncate to 5 characters (FAA standard) - match reference app format
             n_number_clean = n_number_raw[:5].strip()
             if not n_number_clean:
                 skipped_empty += 1
                 continue  # Skip if empty after processing
             
-            # Store with N prefix (our schema uses TEXT(6) for "N538CD" format)
-            n_number = f"N{n_number_clean}"
+            # Store WITHOUT N prefix to match reference app (stores as "538CD", not "N538CD")
+            # This matches the reference app which uses CHAR(5) without N prefix
+            n_number = n_number_clean
             
             # Debug: log first few to verify format
             if count < 5:

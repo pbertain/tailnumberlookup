@@ -29,9 +29,10 @@ def init_database(db_path: Path = None) -> sqlite3.Connection:
     cursor = conn.cursor()
     
     # Aircraft Table (Master Registration Data)
+    # N-number stored without 'N' prefix (matches reference app: CHAR(5))
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS aircraft (
-            n_number TEXT(6) PRIMARY KEY,
+            n_number TEXT(5) PRIMARY KEY,
             serial_number TEXT(30),
             mfr_model_code TEXT(7),
             engine_mfr_model_code TEXT(5),
