@@ -4,7 +4,7 @@
     --airpuff-secondary: #2d5aa0;
     --airpuff-accent: #ffd700;
     --airpuff-light: #e8f0f8;
-    --airpuff-bg: #f5f5f5;
+    --airpuff-bg: #b3d9f2;
     --airpuff-text: #333;
     --airpuff-text-light: #666;
     --airpuff-border: #ddd;
@@ -58,6 +58,54 @@ body {
     font-size: 1.8rem;
     font-weight: 600;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Navigation bar */
+.nav-bar {
+    background: white;
+    border-bottom: 2px solid var(--airpuff-border);
+    box-shadow: 0 2px 4px var(--airpuff-shadow);
+}
+
+.nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem 2rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.nav-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 1rem;
+    background: linear-gradient(135deg, var(--airpuff-light) 0%, white 100%);
+    border: 2px solid var(--airpuff-border);
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--airpuff-primary);
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px var(--airpuff-shadow);
+}
+
+.nav-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px var(--airpuff-shadow-hover);
+    border-color: var(--airpuff-secondary);
+    background: linear-gradient(135deg, white 0%, var(--airpuff-light) 100%);
+}
+
+.nav-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.nav-text {
+    font-size: 1rem;
 }
 
 /* Main content */
@@ -287,9 +335,49 @@ body {
     background-color: var(--airpuff-primary);
     color: white;
     text-align: center;
-    padding: 1.5rem;
+    padding: 2rem 1.5rem;
     margin-top: auto;
     border-top: 3px solid var(--airpuff-accent);
+}
+
+.footer-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.footer-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    transition: opacity 0.3s ease;
+}
+
+.footer-link:hover {
+    opacity: 0.8;
+}
+
+.footer-logo {
+    height: 30px;
+    width: auto;
+    vertical-align: middle;
+}
+
+.footer-logo-small {
+    height: 20px;
+    width: auto;
+    vertical-align: middle;
+    margin-left: 0.5rem;
+}
+
+.footer-secondary {
+    margin: 0;
+    font-size: 0.9rem;
+    opacity: 0.9;
 }
 
 /* Responsive design */

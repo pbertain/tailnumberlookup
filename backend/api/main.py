@@ -26,78 +26,71 @@ app = FastAPI(
 app.include_router(debug_router)
 
 
-def format_aircraft_text(aircraft_data: dict) -> str:
-    """Format aircraft data as plain text for cURL endpoint."""
+def format_aircraft_text_vital(aircraft_data: dict) -> str:
+    """Format aircraft data as plain text with vital stats (for web UI display)."""
     lines = []
     lines.append("=" * 60)
     lines.append(f"AIRCRAFT INFORMATION - {aircraft_data.get('n_number', 'N/A')}")
     lines.append("=" * 60)
     lines.append("")
     
-    # Aircraft Identification
-    if aircraft_data.get('n_number'):
-        lines.append(f"N-Number:             {aircraft_data['n_number']}")
-    if aircraft_data.get('serial_number'):
-        lines.append(f"Serial Number:         {aircraft_data['serial_number']}")
-    if aircraft_data.get('aircraft_manufacturer_name'):
-        lines.append(f"Manufacturer:          {aircraft_data['aircraft_manufacturer_name']}")
-    if aircraft_data.get('aircraft_model_name'):
-        lines.append(f"Model:                 {aircraft_data['aircraft_model_name']}")
-    if aircraft_data.get('year_mfr'):
-        lines.append(f"Year Manufactured:     {aircraft_data['year_mfr']}")
+    # Vital stats (what would be shown in web UI)
+    vital_fields = {
+        'n_number': 'N-Number',
+        'serial_number': 'Serial Number',
+        'aircraft_manufacturer_name': 'Aircraft Manufacturer',
+        'aircraft_model_name': 'Aircraft Model',
+        'year_mfr': 'Year Manufactured',
+        'number_of_engines': 'Number of Engines',
+        'number_of_seats': 'Number of Seats',
+        'engine_manufacturer_name': 'Engine Manufacturer',
+        'engine_model_name': 'Engine Model',
+        'horsepower': 'Horsepower',
+        'pounds_of_thrust': 'Thrust (lbs)',
+        'registrant_name': 'Registrant Name',
+        'street1': 'Street Address',
+        'street2': 'Street Address 2',
+        'city': 'City',
+        'state': 'State',
+        'zip_code': 'Zip Code',
+        'country_mail_code': 'Country Code',
+        'last_activity_date': 'Last Activity Date',
+        'cert_issue_date': 'Certificate Issue Date',
+        'cert_requested': 'Certification Requested',
+        'type_aircraft': 'Aircraft Type',
+        'type_engine': 'Engine Type',
+        'status_code': 'Status Code',
+        'airworthiness_date': 'Airworthiness Date',
+        'expiration_date': 'Expiration Date',
+        'unique_id': 'Unique ID',
+        'kit_mfr': 'Kit Manufacturer',
+        'kit_model_code': 'Kit Model Code',
+        'mode_s_code_hex': 'Mode S Code (Hex)'
+    }
     
-    lines.append("")
-    lines.append("-" * 60)
-    lines.append("ENGINE INFORMATION")
-    lines.append("-" * 60)
-    
-    if aircraft_data.get('engine_manufacturer_name'):
-        lines.append(f"Engine Manufacturer:   {aircraft_data['engine_manufacturer_name']}")
-    if aircraft_data.get('engine_model_name'):
-        lines.append(f"Engine Model:          {aircraft_data['engine_model_name']}")
-    if aircraft_data.get('horsepower'):
-        lines.append(f"Horsepower:            {aircraft_data['horsepower']}")
-    if aircraft_data.get('pounds_of_thrust'):
-        lines.append(f"Thrust (lbs):          {aircraft_data['pounds_of_thrust']}")
-    
-    lines.append("")
-    lines.append("-" * 60)
-    lines.append("REGISTRATION INFORMATION")
-    lines.append("-" * 60)
-    
-    if aircraft_data.get('registrant_name'):
-        lines.append(f"Registrant Name:       {aircraft_data['registrant_name']}")
-    if aircraft_data.get('street1'):
-        lines.append(f"Street:                {aircraft_data['street1']}")
-    if aircraft_data.get('street2'):
-        lines.append(f"Street 2:              {aircraft_data['street2']}")
-    if aircraft_data.get('city'):
-        lines.append(f"City:                  {aircraft_data['city']}")
-    if aircraft_data.get('state'):
-        lines.append(f"State:                 {aircraft_data['state']}")
-    if aircraft_data.get('zip_code'):
-        lines.append(f"Zip Code:              {aircraft_data['zip_code']}")
-    if aircraft_data.get('country_mail_code'):
-        lines.append(f"Country Code:          {aircraft_data['country_mail_code']}")
-    
-    lines.append("")
-    lines.append("-" * 60)
-    lines.append("CERTIFICATION & STATUS")
-    lines.append("-" * 60)
-    
-    if aircraft_data.get('cert_issue_date'):
-        lines.append(f"Cert Issue Date:       {aircraft_data['cert_issue_date']}")
-    if aircraft_data.get('expiration_date'):
-        lines.append(f"Expiration Date:       {aircraft_data['expiration_date']}")
-    if aircraft_data.get('status_code'):
-        lines.append(f"Status Code:           {aircraft_data['status_code']}")
-    if aircraft_data.get('airworthiness_date'):
-        lines.append(f"Airworthiness Date:    {aircraft_data['airworthiness_date']}")
+    for key, label in vital_fields.items():
+        value = aircraft_data.get(key)
+        if value is not None and value != "":
+            # Format dates nicely if they're date strings
+            if 'date' in key and value:
+                try:
+                    from datetime import datetime
+                    dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                    value = dt.strftime('%B %d, %Y')
+                except:
+                    pass
+            lines.append(f"{label:.<30} {value}")
     
     lines.append("")
     lines.append("=" * 60)
     
     return "\n".join(lines)
+
+
+def format_aircraft_text(aircraft_data: dict) -> str:
+    """Format aircraft data as plain text for cURL endpoint."""
+    # Use vital stats format for consistency
+    return format_aircraft_text_vital(aircraft_data)
 
 
 # Custom OpenAPI schema with AirPuff theming
@@ -346,6 +339,31 @@ async def get_aircraft_text(tail_number: str):
         )
     
     text_output = format_aircraft_text(aircraft_data)
+    return PlainTextResponse(content=text_output)
+
+
+@app.get("/curl/v1/aircraft/{tail_number}", response_class=PlainTextResponse)
+async def get_aircraft_curl(tail_number: str):
+    """
+    Get aircraft information by tail number in plain text format (alternative endpoint).
+    Case-insensitive, optional N prefix.
+    
+    Args:
+        tail_number: Aircraft tail number (N-Number), e.g., "N538CD", "538CD", "n538cd", "538cd"
+                    All equivalent - case-insensitive with optional N prefix
+    
+    Returns:
+        Plain text formatted aircraft data with vital stats
+    """
+    aircraft_data = get_aircraft_by_tail_number(tail_number)
+    
+    if not aircraft_data:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Aircraft with tail number {tail_number} not found"
+        )
+    
+    text_output = format_aircraft_text_vital(aircraft_data)
     return PlainTextResponse(content=text_output)
 
 
