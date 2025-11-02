@@ -1,7 +1,9 @@
 [Unit]
 Description=FAA Tail Number Lookup API Service ({{ deploy_env }})
 After=network.target
-StartLimitIntervalSec=0
+# Prevent service from being stopped if it crashes too quickly
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -11,11 +13,8 @@ User={{ app_user }}
 Group={{ app_user }}
 WorkingDirectory={{ app_directory }}
 Environment="PATH={{ app_directory }}/venv/bin:/usr/local/bin:/usr/bin:/bin"
-Environment="PYTHONPATH={{ app_directory }}"
+Environment="PYTHENPATH={{ app_directory }}"
 ExecStart={{ app_directory }}/venv/bin/uvicorn backend.api.main:app --host 127.0.0.1 --port {{ api_port }}
-# Prevent service from being stopped if it crashes too quickly
-StartLimitIntervalSec=300
-StartLimitBurst=5
 StandardOutput=journal
 StandardError=journal
 
