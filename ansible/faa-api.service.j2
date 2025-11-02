@@ -13,7 +13,7 @@ User={{ app_user }}
 Group={{ app_user }}
 WorkingDirectory={{ app_directory }}
 Environment="PATH={{ app_directory }}/venv/bin:/usr/local/bin:/usr/bin:/bin"
-Environment="PYTHENPATH={{ app_directory }}"
+Environment="PYTHONPATH={{ app_directory }}"
 ExecStart={{ app_directory }}/venv/bin/uvicorn backend.api.main:app --host 127.0.0.1 --port {{ api_port }}
 StandardOutput=journal
 StandardError=journal
