@@ -151,6 +151,33 @@
         state: started
         daemon_reload: yes
     
+    - name: Wait for API service to start
+      wait_for:
+        timeout: 10
+      delegate_to: localhost
+    
+    - name: Check API service is running
+      systemd:
+        name: "{{ service_name }}"
+      register: api_check
+      failed_when: api_check.status.ActiveState != 'active'
+    
+    - name: Show API service status if not active
+      debug:
+        msg: "API service failed to start. Status: {{ api_check.status.ActiveState }}, SubState: {{ api_check.status.SubState }}"
+      when: api_check.status.ActiveState != 'active'
+    
+    - name: Show recent API service logs if failed
+      shell: journalctl -u {{ service_name }} -n 20 --no-pager
+      register: api_logs
+      when: api_check.status.ActiveState != 'active'
+      changed_when: false
+    
+    - name: Display API error logs
+      debug:
+        var: api_logs.stdout_lines
+      when: api_check.status.ActiveState != 'active'
+    
     - name: Enable and start sync timer
       systemd:
         name: "{{ sync_service_name }}.timer"
